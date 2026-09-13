@@ -308,7 +308,9 @@ export function FloodPrediction() {
                   <td className="py-2.5">{item.distanceKm} km</td>
                   <td className="py-2.5 text-amber-400 font-bold">{item.arrivalTimeHours} hours</td>
                   <td className="py-2.5 text-red-400">{item.peakDepthMeters} meters</td>
-                  <td className="py-2.5">{item.populationAtRisk.toLocaleString()} citizens</td>
+                  <td className="py-2.5">
+  {(item.populationAtRisk ?? 0).toLocaleString()} citizens
+</td>
                   <td className="py-2.5">
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-bold ${
