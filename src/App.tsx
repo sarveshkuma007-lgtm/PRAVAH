@@ -1,9 +1,17 @@
 import React, { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
+
+import { AuthProvider } from "./context/AuthContext";
 import { LanguageProvider } from "./context/LanguageContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { EmergencyProvider } from "./context/EmergencyContext";
+
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { EmergencyBanner } from "./components/EmergencyBanner";
 import { Navbar } from "./components/Navbar";
@@ -32,22 +40,28 @@ import { ManageUsers } from "./views/ManageUsers";
 import { Settings } from "./views/Settings";
 import { About } from "./views/About";
 import { PublicPortal } from "./views/PublicPortal";
-import { Login } from "./views/Login";
+import { Login } from "./views/Login.jsx";
 
 function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
+
   const location = useLocation();
 
-  // Hide sidebar/navbar in dedicated clean full-screen Login view if desired
   const isLoginPage = location.pathname === "/login";
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
-      {/* Top Critical Emergency Banner if Code Red or Dam breached */}
-      <EmergencyBanner />
+    <div
+      className={
+        isLoginPage
+          ? "min-h-screen bg-slate-950 text-slate-100 font-sans"
+          : "min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950"
+      }
+    >
+      {/* Emergency banner only inside the application */}
+      {!isLoginPage && <EmergencyBanner />}
 
-      {/* Main Navbar */}
+      {/* Navbar hidden on login */}
       {!isLoginPage && (
         <Navbar
           onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
@@ -55,8 +69,8 @@ function AppLayout() {
         />
       )}
 
-      <div className="flex flex-1 relative">
-        {/* Sidebar */}
+      <div className={isLoginPage ? "w-full" : "flex flex-1 relative"}>
+        {/* Sidebar hidden on login */}
         {!isLoginPage && (
           <Sidebar
             isOpen={sidebarOpen}
@@ -64,20 +78,26 @@ function AppLayout() {
           />
         )}
 
-        {/* Main Content Area */}
+        {/* Main Content */}
         <main
-          className={`flex-1 transition-all duration-200 p-4 sm:p-6 md:p-8 ${
-            !isLoginPage ? "lg:ml-64" : ""
-          }`}
+          className={
+            isLoginPage
+              ? "w-full min-h-screen"
+              : "flex-1 transition-all duration-200 p-4 sm:p-6 md:p-8 lg:ml-64"
+          }
         >
-          <div className="max-w-7xl mx-auto">
+          <div className={isLoginPage ? "w-full" : "max-w-7xl mx-auto"}>
             <Routes>
-              {/* Public Unauthenticated Route */}
+              {/* ================= PUBLIC ROUTES ================= */}
+
               <Route path="/login" element={<Login />} />
+
               <Route path="/about" element={<About />} />
+
               <Route path="/public" element={<PublicPortal />} />
 
-              {/* Protected Core Operational Routes */}
+              {/* ================= PROTECTED ROUTES ================= */}
+
               <Route
                 path="/dashboard"
                 element={
@@ -86,6 +106,7 @@ function AppLayout() {
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/dam-monitoring"
                 element={
@@ -94,6 +115,7 @@ function AppLayout() {
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/dam/:id"
                 element={
@@ -102,6 +124,7 @@ function AppLayout() {
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/live-map"
                 element={
@@ -110,6 +133,7 @@ function AppLayout() {
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/flood-prediction"
                 element={
@@ -118,6 +142,7 @@ function AppLayout() {
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/risk-assessment"
                 element={
@@ -126,6 +151,7 @@ function AppLayout() {
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/weather"
                 element={
@@ -134,6 +160,7 @@ function AppLayout() {
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/alerts"
                 element={
@@ -142,6 +169,7 @@ function AppLayout() {
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/emergency-response"
                 element={
@@ -150,6 +178,7 @@ function AppLayout() {
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/safe-routes"
                 element={
@@ -158,6 +187,7 @@ function AppLayout() {
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/shelters"
                 element={
@@ -166,6 +196,7 @@ function AppLayout() {
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/reports"
                 element={
@@ -174,6 +205,7 @@ function AppLayout() {
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/analytics"
                 element={
@@ -182,6 +214,7 @@ function AppLayout() {
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/settings"
                 element={
@@ -191,17 +224,22 @@ function AppLayout() {
                 }
               />
 
-              {/* Role Restricted Routes */}
+              {/* ================= ADMIN / OFFICIAL ROUTES ================= */}
+
               <Route
                 path="/manage-dams"
                 element={
                   <ProtectedRoute
-                    allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.GOVT_OFFICIAL]}
+                    allowedRoles={[
+                      USER_ROLES.ADMIN,
+                      USER_ROLES.GOVT_OFFICIAL,
+                    ]}
                   >
                     <ManageDams />
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/manage-users"
                 element={
@@ -211,22 +249,38 @@ function AppLayout() {
                 }
               />
 
-              {/* Default redirects */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              {/* ================= DEFAULT ROUTES ================= */}
+
+              {/* Opening website redirects to Login */}
+              <Route
+                path="/"
+                element={<Navigate to="/login" replace />}
+              />
+
+              {/* Unknown routes also redirect to Login */}
+              <Route
+                path="*"
+                element={<Navigate to="/login" replace />}
+              />
             </Routes>
           </div>
         </main>
       </div>
 
-      {/* Global AI Floating Chatbot & Voice Assistant */}
+      {/* ================= GLOBAL AI FEATURES ================= */}
+
       {!isLoginPage && (
         <>
           <FloatingAIButton
             isOpen={aiChatOpen}
             onClick={() => setAiChatOpen((prev) => !prev)}
           />
-          <AIChatbot isOpen={aiChatOpen} onClose={() => setAiChatOpen(false)} />
+
+          <AIChatbot
+            isOpen={aiChatOpen}
+            onClose={() => setAiChatOpen(false)}
+          />
+
           <VoiceAssistant />
         </>
       )}
