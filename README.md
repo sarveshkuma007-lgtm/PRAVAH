@@ -1,20 +1,26 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# PRAVAH 🌊
 
-# Run and deploy your AI Studio app
+## Predictive Risk Assessment & Vigilance for Aquatic Hazards
 
-This contains everything you need to run your app locally.
+AI-powered dam break flood prediction and disaster
+management system.
 
-View your app in AI Studio: https://ai.studio/apps/772233ad-d882-4f86-a69c-95c8ccf65175
+### Features
+- AI Flood Prediction
+- Dam Monitoring
+- Live Map
+- Risk Assessment
+- Weather Forecasting
+- AI Chatbot
+- Voice Assistant
 
-## Run Locally
+### Tech Stack
+- React.js
+- AI / Machine Learning
+- FastAPI
+- PostGIS
+- OpenStreetMap
 
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### Project
+PRAVAH – AI-powered flood prediction and
+disaster management platform.
