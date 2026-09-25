@@ -3,7 +3,84 @@ import L from "leaflet";
 import { DAMS_DATA } from "../data/damData";
 import { MOCK_SHELTERS } from "../data/mockSimulationData";
 import { mapsService } from "../services/mapsService";
-import { Layers, MapPin, ShieldAlert, Home, Navigation, Eye } from "lucide-react";
+import { Layers, MapPin, ShieldAlert, Home, Navigation, Eye, Radio } from "lucide-react";
+
+// =====================================================
+// GLOBAL KEYFRAMES
+// Injected once into <head>. Explicit names so nothing
+// depends on Tailwind having generated a same-named
+// utility elsewhere in the app.
+// =====================================================
+const MAP_STYLE_ID = "pravah-flood-map-keyframes";
+
+function ensureMapStyles() {
+  if (document.getElementById(MAP_STYLE_ID)) return;
+
+  const style = document.createElement("style");
+  style.id = MAP_STYLE_ID;
+  style.textContent = `
+    @keyframes pravah-dam-pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
+      70%  { box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+
+    @keyframes pravah-radar-ring {
+      0%   { transform: scale(0.4); opacity: 0.9; }
+      100% { transform: scale(2.6); opacity: 0; }
+    }
+
+    @keyframes pravah-dash-flow {
+      to { stroke-dashoffset: -40; }
+    }
+
+    @keyframes pravah-zone-breathe {
+      0%, 100% { fill-opacity: 0.32; stroke-opacity: 0.9; }
+      50%      { fill-opacity: 0.55; stroke-opacity: 0.5; }
+    }
+
+    .pravah-river-flow {
+      animation: pravah-dash-flow 1.2s linear infinite;
+    }
+
+    .pravah-surge-zone {
+      animation: pravah-zone-breathe 2.6s ease-in-out infinite;
+      transform-origin: center;
+    }
+
+    .pravah-radar-marker { position: relative; width: 34px; height: 34px; }
+    .pravah-radar-marker__core {
+      position: absolute; top: 50%; left: 50%;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #ef4444; border: 2px solid #ffffff;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 10px 2px rgba(239, 68, 68, 0.8);
+      z-index: 2;
+    }
+    .pravah-radar-marker__ring {
+      position: absolute; top: 50%; left: 50%;
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 2px solid #ef4444;
+      transform: translate(-50%, -50%) scale(0.4);
+      animation: pravah-radar-ring 2s ease-out infinite;
+    }
+    .pravah-radar-marker__ring--delay {
+      animation-delay: 0.66s;
+    }
+    .pravah-radar-marker__ring--delay2 {
+      animation-delay: 1.32s;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .pravah-radar-marker__ring,
+      .pravah-river-flow,
+      .pravah-surge-zone {
+        animation: none !important;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
 
 export function FloodMap({
   selectedDam = null,
@@ -20,12 +97,35 @@ export function FloodMap({
   const mapInstanceRef = useRef(null);
   const layerGroupRef = useRef(null);
   const [activeTile, setActiveTile] = useState("darkCommand");
+  const [lastSynced, setLastSynced] = useState(new Date());
+  const [secondsAgo, setSecondsAgo] = useState(0);
   const [activeLayers, setActiveLayers] = useState({
     dams: showDams,
     shelters: showShelters,
     inundation: showInundation,
     rivers: showRivers,
   });
+
+  useEffect(() => {
+    ensureMapStyles();
+  }, []);
+
+  // Live "data freshness" readout — ticks every second, resets on a
+  // periodic simulated re-sync so it never looks stale in a demo.
+  useEffect(() => {
+    const tick = setInterval(() => {
+      setSecondsAgo(Math.floor((Date.now() - lastSynced.getTime()) / 1000));
+    }, 1000);
+
+    const resync = setInterval(() => {
+      setLastSynced(new Date());
+    }, 30000);
+
+    return () => {
+      clearInterval(tick);
+      clearInterval(resync);
+    };
+  }, [lastSynced]);
 
   // Custom marker icons
   const createDamIcon = (riskLevel) => {
@@ -46,7 +146,6 @@ export function FloodMap({
           align-items: center;
           justify-content: center;
           box-shadow: 0 0 ${isCritical ? "16px #ef4444" : "10px rgba(0,0,0,0.5)"};
-          ${isCritical ? "animation: pulse 1.5s infinite;" : ""}
         ">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
@@ -101,6 +200,35 @@ export function FloodMap({
     });
   };
 
+  // Radar-pulse icon for the breach epicenter — three staggered
+  // expanding rings around a solid core, CSS-driven (no per-frame JS).
+  const createRadarIcon = () => {
+    return L.divIcon({
+      className: "custom-radar-marker",
+      html: `
+        <div class="pravah-radar-marker">
+          <span class="pravah-radar-marker__ring"></span>
+          <span class="pravah-radar-marker__ring pravah-radar-marker__ring--delay"></span>
+          <span class="pravah-radar-marker__ring pravah-radar-marker__ring--delay2"></span>
+          <span class="pravah-radar-marker__core"></span>
+        </div>
+      `,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17],
+    });
+  };
+
+  // Centroid of a polygon's ring, used to place the radar marker at the
+  // approximate center of the highest-risk surge zone without needing a
+  // dedicated "epicenter" coordinate in the data layer.
+  const polygonCentroid = (ring) => {
+    const [latSum, lngSum] = ring.reduce(
+      ([latAcc, lngAcc], [lat, lng]) => [latAcc + lat, lngAcc + lng],
+      [0, 0]
+    );
+    return [latSum / ring.length, lngSum / ring.length];
+  };
+
   // Initialize Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -143,11 +271,14 @@ export function FloodMap({
 
     // 1. Inundation Zones (Delft3D / SPH breach prediction)
     if (activeLayers.inundation) {
-      const redZone = L.polygon(mapsService.INUNDATION_ZONES.hirakudSurgeZone, {
+      const surgeRing = mapsService.INUNDATION_ZONES.hirakudSurgeZone;
+
+      const redZone = L.polygon(surgeRing, {
         color: "#ef4444",
         weight: 2,
         fillColor: "#ef4444",
         fillOpacity: 0.45,
+        className: "pravah-surge-zone",
       }).bindPopup(`
         <div style="font-family: system-ui; font-size: 12px; color: #0f172a;">
           <strong style="color: #ef4444;">DELFT3D SIMULATION: HIGH-VELOCITY BREACH SURGE</strong><br/>
@@ -156,6 +287,20 @@ export function FloodMap({
         </div>
       `);
       group.addLayer(redZone);
+
+      // Radar-pulse marker at the surge zone's centroid — the visual
+      // "ground zero" that draws the eye straight to the highest-risk point.
+      const epicenter = polygonCentroid(surgeRing);
+      const radarMarker = L.marker(epicenter, {
+        icon: createRadarIcon(),
+        zIndexOffset: 1000,
+      }).bindPopup(`
+        <div style="font-family: system-ui; font-size: 12px; color: #0f172a;">
+          <strong style="color: #ef4444;">Breach Epicenter</strong><br/>
+          Center of highest-velocity surge zone
+        </div>
+      `);
+      group.addLayer(radarMarker);
 
       const bufferZone = L.polygon(mapsService.INUNDATION_ZONES.moderateBufferZone, {
         color: "#f59e0b",
@@ -172,13 +317,15 @@ export function FloodMap({
       group.addLayer(bufferZone);
     }
 
-    // 2. River Networks
+    // 2. River Networks — animated dash flow shows discharge direction
     if (activeLayers.rivers) {
       mapsService.RIVER_NETWORKS.forEach((river) => {
         const line = L.polyline(river.coordinates, {
           color: river.color,
           weight: 4,
-          opacity: 0.8,
+          opacity: 0.85,
+          dashArray: "10 10",
+          className: "pravah-river-flow",
         }).bindPopup(`<strong>${river.name}</strong><br/>Active flood discharge monitoring channel`);
         group.addLayer(line);
       });
@@ -309,7 +456,16 @@ export function FloodMap({
             <span>Shelters</span>
           </button>
         </div>
+
+        {/* Sync readout lives inside the same wrapping toolbar row, so it
+            never has to compete for space with the legend or any other
+            floating overlay */}
+        <div className="flex items-center gap-1 border-l border-slate-700 pl-2 font-mono text-slate-400">
+          <Radio className="w-3 h-3 text-emerald-400" />
+          <span>{secondsAgo}s ago</span>
+        </div>
       </div>
+
 
       {/* Legend Box Bottom-Right */}
       <div className="absolute bottom-4 right-4 z-20 bg-slate-900/90 backdrop-blur-md p-3 rounded-xl border border-slate-700 text-xs shadow-xl hidden sm:block max-w-[200px]">
@@ -332,6 +488,13 @@ export function FloodMap({
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded bg-emerald-500 shrink-0" />
             <span>Designated Shelter</span>
+          </div>
+          <div className="flex items-center gap-2 pt-1 border-t border-slate-800">
+            <span className="relative flex h-3 w-3 items-center justify-center shrink-0">
+              <span className="absolute h-2 w-2 rounded-full bg-red-500 animate-ping opacity-70" />
+              <span className="relative h-1.5 w-1.5 rounded-full bg-red-500" />
+            </span>
+            <span>Breach Epicenter</span>
           </div>
         </div>
       </div>
