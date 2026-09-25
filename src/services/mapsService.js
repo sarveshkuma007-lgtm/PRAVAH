@@ -1,11 +1,13 @@
-// src/services/mapsService.js
 
 const MAP_CONFIG = {
+  // OpenStreetMap — no personal API key required
   OSM_TILES: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
 
+  // Esri World Imagery — satellite tiles
   SATELLITE_TILES:
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
 
+  // OpenTopoMap — terrain tiles
   TERRAIN_TILES:
     "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
 
@@ -16,19 +18,34 @@ const MAP_CONFIG = {
   GEOCODING_API: "https://nominatim.openstreetmap.org",
 };
 
+// =====================================================
+// MAP TILE LAYERS
+// =====================================================
+
 const TILE_LAYERS = {
   darkCommand: {
     url: MAP_CONFIG.OSM_TILES,
+    attribution: "&copy; OpenStreetMap contributors",
+    maxZoom: 19,
   },
 
   satellite: {
     url: MAP_CONFIG.SATELLITE_TILES,
+    attribution: "Tiles &copy; Esri",
+    maxZoom: 18,
   },
 
   terrain: {
     url: MAP_CONFIG.TERRAIN_TILES,
+    attribution:
+      "Map data &copy; OpenStreetMap contributors, SRTM | Map style &copy; OpenTopoMap",
+    maxZoom: 17,
   },
 };
+
+// =====================================================
+// FLOOD INUNDATION ZONES
+// =====================================================
 
 const INUNDATION_ZONES = {
   hirakudSurgeZone: [
@@ -52,6 +69,10 @@ const INUNDATION_ZONES = {
   ],
 };
 
+// =====================================================
+// RIVER NETWORKS
+// =====================================================
+
 const RIVER_NETWORKS = [
   {
     name: "Mahanadi River",
@@ -65,6 +86,7 @@ const RIVER_NETWORKS = [
       [21.32, 84.12],
     ],
   },
+
   {
     name: "Ib River",
     color: "#60a5fa",
@@ -75,6 +97,7 @@ const RIVER_NETWORKS = [
       [21.48, 83.88],
     ],
   },
+
   {
     name: "Rihand River",
     color: "#38bdf8",
@@ -88,9 +111,15 @@ const RIVER_NETWORKS = [
   },
 ];
 
+// =====================================================
+// MAP SERVICE
+// =====================================================
+
 const mapsService = {
   TILE_LAYERS,
+
   INUNDATION_ZONES,
+
   RIVER_NETWORKS,
 
   getMapConfig() {
@@ -111,6 +140,10 @@ const mapsService = {
     return dams[damName] || MAP_CONFIG.INDIA_CENTER;
   },
 
+  // ===================================================
+  // ROUTING API
+  // ===================================================
+
   async getRoute(start, end) {
     try {
       const url =
@@ -129,16 +162,26 @@ const mapsService = {
       return data.routes?.[0] || null;
     } catch (error) {
       console.warn("Routing unavailable:", error);
+
       return null;
     }
   },
+
+  // ===================================================
+  // GEOCODING API
+  // ===================================================
 
   async searchLocation(query) {
     try {
       const response = await fetch(
         `${MAP_CONFIG.GEOCODING_API}/search?format=json&q=${encodeURIComponent(
           query
-        )}&countrycodes=in`
+        )}&countrycodes=in`,
+        {
+          headers: {
+            Accept: "application/json",
+          },
+        }
       );
 
       if (!response.ok) {
@@ -148,9 +191,14 @@ const mapsService = {
       return await response.json();
     } catch (error) {
       console.warn("Geocoding unavailable:", error);
+
       return [];
     }
   },
+
+  // ===================================================
+  // FLOOD ZONE STYLES
+  // ===================================================
 
   getFloodZoneStyle(riskLevel) {
     const styles = {
@@ -159,16 +207,19 @@ const mapsService = {
         fillColor: "#22c55e",
         fillOpacity: 0.25,
       },
+
       MODERATE: {
         color: "#f59e0b",
         fillColor: "#f59e0b",
         fillOpacity: 0.3,
       },
+
       HIGH: {
         color: "#f97316",
         fillColor: "#f97316",
         fillOpacity: 0.35,
       },
+
       CRITICAL: {
         color: "#ef4444",
         fillColor: "#ef4444",
@@ -180,5 +231,10 @@ const mapsService = {
   },
 };
 
+// =====================================================
+// EXPORT
+// =====================================================
+
 export { mapsService };
+
 export default mapsService;

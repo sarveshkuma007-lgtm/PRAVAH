@@ -1,323 +1,695 @@
-import React, { useState, useRef, useEffect } from "react";
-import {
-  X,
-  Send,
-  Mic,
-  MicOff,
-  Volume2,
-  VolumeX,
-  Sparkles,
-  Bot,
-  User,
-  Shield,
-  CornerDownLeft,
-  ChevronRight,
-} from "lucide-react";
-import { geminiService } from "../services/geminiService";
-import { speakAlert, playChime } from "../utils/emergencyUtils";
-import { useLanguage } from "../context/LanguageContext";
-import { useLocation } from "../hooks/useLocation";
 
-const QUICK_PROMPTS = [
-  "What is the current flood risk near Tehri Dam?",
-  "Explain today's reservoir water levels.",
-  "What should people do during a dam break emergency?",
-  "Find the nearest safe shelter.",
-  "Will heavy rainfall affect my district?",
-];
+import React, { useEffect, useRef, useState } from "react";
+
+/**
+ * PRAVAH AI Chatbot
+ * Uses the backend OpenAI endpoint:
+ * POST /api/openai/chat
+ */
+
+const INITIAL_MESSAGE = {
+  role: "assistant",
+  content:
+    "Namaste! I am PRAVAH AI, your intelligent Dam Safety and Flood Disaster Assistant. Ask me about dam safety, flood preparedness, evacuation planning, or reservoir monitoring.",
+};
+
+function cleanText(text = "") {
+  return String(text)
+    .replace(/[*_`#~]/g, "")
+    .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function speakText(text) {
+  if (!("speechSynthesis" in window)) {
+    return;
+  }
+
+  window.speechSynthesis.cancel();
+
+  const speech = new SpeechSynthesisUtterance(cleanText(text));
+  speech.rate = 0.95;
+  speech.pitch = 1;
+  speech.volume = 1;
+
+  window.speechSynthesis.speak(speech);
+}
 
 export function AIChatbot({ isOpen, onClose }) {
-  const [messages, setMessages] = useState([
-    {
-      id: "msg-1",
-      role: "assistant",
-      content:
-        "Namaste! I am PRAVAH AI, your intelligent Dam Safety and Flood Disaster Companion. Ask me about real-time reservoir levels, breach inundation predictions, or evacuation instructions in any language.",
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    },
-  ]);
+  const [messages, setMessages] = useState([INITIAL_MESSAGE]);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [speechActive, setSpeechActive] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+
   const messagesEndRef = useRef(null);
-  const recognitionRef = useRef(null);
-  const { activeLangObj } = useLanguage();
-  const { location, nearestDam, nearestShelter } = useLocation();
+  const inputRef = useRef(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }, [messages, loading]);
 
-  // Setup Web Speech Recognition for voice input in chat
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = activeLangObj?.speechCode || "en-IN";
+    if (isOpen) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
 
-        recognition.onstart = () => {
-          setIsListening(true);
-          playChime();
-        };
-
-        recognition.onresult = (e) => {
-          const text = e.results[0][0].transcript;
-          setInput(text);
-          setIsListening(false);
-        };
-
-        recognition.onerror = () => {
-          setIsListening(false);
-        };
-
-        recognition.onend = () => {
-          setIsListening(false);
-        };
-
-        recognitionRef.current = recognition;
+  useEffect(() => {
+    return () => {
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
       }
-    }
-  }, [activeLangObj]);
+    };
+  }, []);
 
-  const toggleMic = () => {
-    if (!recognitionRef.current) return;
-    if (isListening) {
-      recognitionRef.current.stop();
-    } else {
-      recognitionRef.current.start();
-    }
-  };
+  async function sendMessage(customMessage = null) {
+    const messageToSend = String(
+      customMessage ?? input
+    ).trim();
 
-  const handleSend = async (textToSend) => {
-    const text = textToSend || input;
-    if (!text.trim() || isLoading) return;
+    if (!messageToSend || loading) {
+      return;
+    }
 
     const userMessage = {
-      id: `msg-${Date.now()}`,
       role: "user",
-      content: text,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      content: messageToSend,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+
+    setMessages(updatedMessages);
     setInput("");
-    setIsLoading(true);
+    setLoading(true);
 
     try {
-      const context = {
-        userLocation: location?.name,
-        damName: nearestDam?.name,
-        nearestDamWaterLevel: nearestDam?.currentWaterLevel,
-        nearestShelter: nearestShelter?.name,
-      };
+      const response = await fetch("/api/openai/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: messageToSend,
+          history: messages.map((item) => ({
+            role: item.role,
+            content: item.content,
+          })),
+          context: {
+            application: "PRAVAH",
+            system:
+              "AI Dam Break Flood Prediction and Disaster Management System",
+            selectedDam: "Hirakud Dam",
+            location: "India",
+          },
+        }),
+      });
 
-      const reply = await geminiService.sendChatMessage(
-        text,
-        messages.slice(-6),
-        context
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error || "OpenAI request failed"
+        );
+      }
+
+      const assistantReply = cleanText(
+        data?.reply ||
+          data?.message ||
+          "No response was received from OpenAI."
       );
 
-      const botMessage = {
-        id: `msg-${Date.now() + 1}`,
+      const assistantMessage = {
         role: "assistant",
-        content: reply,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        content: assistantReply,
       };
 
-      setMessages((prev) => [...prev, botMessage]);
+      setMessages((previousMessages) => [
+        ...previousMessages,
+        assistantMessage,
+      ]);
 
-      if (speechActive) {
-        speakAlert(reply, activeLangObj?.speechCode || "en-IN");
+      if (voiceEnabled) {
+        speakText(assistantReply);
       }
-    } catch (err) {
-      console.error(err);
-      const fallbackMsg = {
-        id: `msg-${Date.now() + 1}`,
+    } catch (error) {
+      console.error("PRAVAH OpenAI Chat Error:", error);
+
+      const errorMessage = {
         role: "assistant",
         content:
-          "PRAVAH Telemetry Core: Live dam telemetry indicates stable gates at Bhakra & Sardar Sarovar; Hirakud is discharging 4,600 cumecs under red alert. Check local advisories.",
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          "PRAVAH AI is temporarily unavailable. Please check whether the backend server is running and try again.",
       };
-      setMessages((prev) => [...prev, fallbackMsg]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  if (!isOpen) return null;
+      setMessages((previousMessages) => [
+        ...previousMessages,
+        errorMessage,
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    sendMessage();
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function handleVoiceToggle() {
+    setVoiceEnabled((previousValue) => {
+      const nextValue = !previousValue;
+
+      if (!nextValue && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+
+      return nextValue;
+    });
+  }
+
+  function clearChat() {
+    setMessages([INITIAL_MESSAGE]);
+
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+  }
+
+  if (!isOpen) {
+    return null;
+  }
 
   return (
-    <div className="fixed top-18 right-4 z-50 w-[95vw] sm:w-[420px] h-[560px] max-h-[82vh] bg-slate-900/95 backdrop-blur-xl border border-cyan-500/40 rounded-2xl shadow-2xl shadow-cyan-950/70 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-      {/* Chatbot Header */}
-      <div className="px-4 py-3 bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950 border-b border-cyan-500/30 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-400/60 flex items-center justify-center text-cyan-300">
-            <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-slate-100 tracking-wide">
-                PRAVAH AI Companion
-              </span>
-              <span className="text-[10px] bg-cyan-950 text-cyan-400 px-1.5 py-0.5 rounded border border-cyan-800 font-mono">
-                Gemini 3.8
-              </span>
-            </div>
-            <p className="text-[10px] text-cyan-300/80 font-mono">
-              Dam &bull; Inundation &bull; Evacuation Intelligence
-            </p>
-          </div>
-        </div>
+    <div style={styles.overlay}>
+      <section
+        style={styles.chatWindow}
+        aria-label="PRAVAH OpenAI chatbot"
+      >
+        {/* HEADER */}
+        <header style={styles.header}>
+          <div style={styles.headerLeft}>
+            <div style={styles.aiIcon}>✦</div>
 
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setSpeechActive(!speechActive)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 text-xs"
-            title={speechActive ? "Mute Voice Output" : "Enable Voice Output"}
-          >
-            {speechActive ? (
-              <Volume2 className="w-4 h-4 text-cyan-400" />
-            ) : (
-              <VolumeX className="w-4 h-4" />
-            )}
-          </button>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-            title="Close Assistant"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
+            <div>
+              <div style={styles.titleRow}>
+                <strong style={styles.title}>
+                  PRAVAH AI Companion
+                </strong>
 
-      {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-3.5 space-y-3">
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={`flex items-start gap-2 ${
-              m.role === "user" ? "flex-row-reverse" : "flex-row"
-            }`}
-          >
-            <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-1 text-[10px] font-bold ${
-                m.role === "user"
-                  ? "bg-slate-700 text-slate-200"
-                  : "bg-cyan-900/60 border border-cyan-500/40 text-cyan-300"
-              }`}
-            >
-              {m.role === "user" ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
-            </div>
-
-            <div
-              className={`max-w-[82%] px-3 py-2 rounded-xl text-xs leading-relaxed whitespace-pre-wrap ${
-                m.role === "user"
-                  ? "bg-cyan-600 text-white rounded-tr-none shadow-sm"
-                  : "bg-slate-800/90 text-slate-200 border border-slate-700/80 rounded-tl-none shadow-sm"
-              }`}
-            >
-              <div className="flex items-center justify-between gap-3 mb-1 text-[10px] text-slate-400">
-                <span className="font-semibold text-slate-300">
-                  {m.role === "user" ? "You" : "PRAVAH AI"}
+                <span style={styles.providerBadge}>
+                  OpenAI
                 </span>
-                <div className="flex items-center gap-1.5">
-                  <span>{m.timestamp}</span>
-                  {m.role === "assistant" && (
+              </div>
+
+              <div style={styles.subtitle}>
+                Dam • Inundation • Evacuation Intelligence
+              </div>
+            </div>
+          </div>
+
+          <div style={styles.headerActions}>
+            <button
+              type="button"
+              onClick={handleVoiceToggle}
+              style={{
+                ...styles.headerButton,
+                backgroundColor: voiceEnabled
+                  ? "#087f9b"
+                  : "#17263c",
+              }}
+              title="Toggle voice response"
+            >
+              🔊
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              style={styles.headerButton}
+              title="Close chatbot"
+            >
+              ✕
+            </button>
+          </div>
+        </header>
+
+        {/* MESSAGES */}
+        <main style={styles.messagesArea}>
+          {messages.map((message, index) => {
+            const isUser = message.role === "user";
+
+            return (
+              <div
+                key={`${message.role}-${index}`}
+                style={{
+                  ...styles.messageRow,
+                  justifyContent: isUser
+                    ? "flex-end"
+                    : "flex-start",
+                }}
+              >
+                {!isUser && (
+                  <div style={styles.botAvatar}>♙</div>
+                )}
+
+                <div
+                  style={{
+                    ...styles.messageBubble,
+                    ...(isUser
+                      ? styles.userBubble
+                      : styles.botBubble),
+                  }}
+                >
+                  <div style={styles.messageLabel}>
+                    {isUser ? "You" : "PRAVAH AI"}
+                  </div>
+
+                  <div style={styles.messageText}>
+                    {cleanText(message.content)}
+                  </div>
+
+                  {!isUser && (
                     <button
-                      onClick={() => speakAlert(m.content, activeLangObj?.speechCode || "en-IN")}
-                      className="text-slate-400 hover:text-cyan-300"
-                      title="Read aloud"
+                      type="button"
+                      onClick={() => speakText(message.content)}
+                      style={styles.speakButton}
+                      title="Read response aloud"
                     >
-                      <Volume2 className="w-3 h-3" />
+                      🔊 Read aloud
                     </button>
                   )}
                 </div>
+
+                {isUser && (
+                  <div style={styles.userAvatar}>◯</div>
+                )}
               </div>
-              <p>{m.content}</p>
-            </div>
-          </div>
-        ))}
+            );
+          })}
 
-        {isLoading && (
-          <div className="flex items-start gap-2">
-            <div className="w-6 h-6 rounded-full bg-cyan-900/60 border border-cyan-500/40 flex items-center justify-center shrink-0 mt-1 text-cyan-300">
-              <Bot className="w-3.5 h-3.5" />
-            </div>
-            <div className="bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2 text-xs text-cyan-300 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce" />
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce [animation-delay:0.2s]" />
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce [animation-delay:0.4s]" />
-              <span className="text-[11px] text-slate-400 font-mono">
-                Computing flood neural synthesis...
-              </span>
-            </div>
-          </div>
-        )}
+          {loading && (
+            <div style={styles.messageRow}>
+              <div style={styles.botAvatar}>♙</div>
 
-        <div ref={messagesEndRef} />
-      </div>
+              <div style={styles.messageBubble}>
+                <div style={styles.messageLabel}>
+                  PRAVAH AI
+                </div>
 
-      {/* Suggested Quick Prompts */}
-      <div className="px-3 py-1.5 border-t border-slate-800/80 bg-slate-950/40 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-        {QUICK_PROMPTS.map((prompt, idx) => (
+                <div style={styles.typing}>
+                  OpenAI is preparing a response...
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </main>
+
+        {/* QUICK QUESTIONS */}
+        <div style={styles.quickQuestions}>
           <button
-            key={idx}
-            onClick={() => handleSend(prompt)}
-            className="shrink-0 text-[10px] px-2.5 py-1 rounded-full bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 hover:border-cyan-700 text-slate-300 border border-slate-700/60 transition-colors"
+            type="button"
+            onClick={() =>
+              sendMessage(
+                "Explain general flood safety precautions."
+              )
+            }
+            style={styles.quickButton}
           >
-            {prompt}
+            Flood safety precautions
           </button>
-        ))}
-      </div>
 
-      {/* Input Box with Speech Recognition */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSend();
-        }}
-        className="p-3 bg-slate-950 border-t border-slate-800 flex items-center gap-2"
-      >
-        <button
-          type="button"
-          onClick={toggleMic}
-          className={`p-2 rounded-lg border transition-colors ${
-            isListening
-              ? "bg-red-600 text-white border-red-500 animate-pulse"
-              : "bg-slate-800 text-slate-300 hover:text-cyan-300 border-slate-700"
-          }`}
-          title={isListening ? "Listening... click to stop" : "Speak into microphone"}
+          <button
+            type="button"
+            onClick={() =>
+              sendMessage(
+                "What information is needed for dam flood risk analysis?"
+              )
+            }
+            style={styles.quickButton}
+          >
+            Dam risk analysis
+          </button>
+        </div>
+
+        {/* INPUT */}
+        <form
+          onSubmit={handleSubmit}
+          style={styles.inputForm}
         >
-          {isListening ? <Mic className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-        </button>
+          <button
+            type="button"
+            onClick={handleVoiceToggle}
+            style={styles.inputIconButton}
+            title="Toggle voice"
+          >
+            🎙
+          </button>
 
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={
-            isListening ? "Listening to your voice..." : "Ask flood safety, dam level, or routes..."
-          }
-          className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-        />
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(event) =>
+              setInput(event.target.value)
+            }
+            onKeyDown={handleKeyDown}
+            placeholder="Ask about flood safety, dam levels, or routes..."
+            rows={1}
+            disabled={loading}
+            style={styles.textarea}
+          />
 
-        <button
-          type="submit"
-          disabled={!input.trim() || isLoading}
-          className="p-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white transition-colors"
-          title="Send message"
-        >
-          <Send className="w-4 h-4" />
-        </button>
-      </form>
+          <button
+            type="submit"
+            disabled={loading || !input.trim()}
+            style={{
+              ...styles.sendButton,
+              opacity:
+                loading || !input.trim() ? 0.5 : 1,
+            }}
+            title="Send message"
+          >
+            ➤
+          </button>
+        </form>
+
+        {/* FOOTER */}
+        <footer style={styles.footer}>
+          <button
+            type="button"
+            onClick={clearChat}
+            style={styles.clearButton}
+          >
+            Clear chat
+          </button>
+
+          <span style={styles.footerText}>
+            Powered by PRAVAH • OpenAI
+          </span>
+        </footer>
+      </section>
     </div>
   );
 }
 
+/*
+ * Default export is also provided.
+ * This supports both:
+ *
+ * import { AIChatbot } from "./components/AIChatbot";
+ *
+ * and:
+ *
+ * import AIChatbot from "./components/AIChatbot";
+ */
 export default AIChatbot;
+
+const styles = {
+  overlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 9999,
+    pointerEvents: "none",
+  },
+
+  chatWindow: {
+    position: "absolute",
+    right: "24px",
+    bottom: "24px",
+    width: "min(450px, calc(100vw - 32px))",
+    height: "min(650px, calc(100vh - 48px))",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+    pointerEvents: "auto",
+    border: "1px solid #07516b",
+    borderRadius: "20px",
+    backgroundColor: "#0b1428",
+    color: "#e7f3ff",
+    boxShadow:
+      "0 20px 70px rgba(0, 0, 0, 0.6)",
+    fontFamily:
+      "Inter, Segoe UI, Arial, sans-serif",
+  },
+
+  header: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+    padding: "16px",
+    background:
+      "linear-gradient(135deg, #102b45, #073c51)",
+    borderBottom: "1px solid #17445c",
+  },
+
+  headerLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    minWidth: 0,
+  },
+
+  aiIcon: {
+    width: "38px",
+    height: "38px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    border: "1px solid #00a7d1",
+    borderRadius: "50%",
+    color: "#53e6ff",
+    fontSize: "22px",
+  },
+
+  titleRow: {
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "7px",
+  },
+
+  title: {
+    fontSize: "14px",
+    color: "#f0f7ff",
+  },
+
+  providerBadge: {
+    padding: "3px 6px",
+    border: "1px solid #00a9ce",
+    borderRadius: "5px",
+    color: "#53e6ff",
+    fontSize: "10px",
+  },
+
+  subtitle: {
+    marginTop: "4px",
+    color: "#76c8df",
+    fontSize: "10px",
+  },
+
+  headerActions: {
+    display: "flex",
+    gap: "6px",
+  },
+
+  headerButton: {
+    width: "30px",
+    height: "30px",
+    border: "1px solid #25445a",
+    borderRadius: "8px",
+    backgroundColor: "#17263c",
+    color: "#c9e6f5",
+    cursor: "pointer",
+  },
+
+  messagesArea: {
+    flex: 1,
+    minHeight: 0,
+    overflowY: "auto",
+    padding: "16px 12px",
+    backgroundColor: "#0b1428",
+  },
+
+  messageRow: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "8px",
+    marginBottom: "14px",
+  },
+
+  botAvatar: {
+    width: "27px",
+    height: "27px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    border: "1px solid #0b98b8",
+    borderRadius: "50%",
+    color: "#5de3ff",
+    fontSize: "14px",
+  },
+
+  userAvatar: {
+    width: "27px",
+    height: "27px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    borderRadius: "50%",
+    backgroundColor: "#26364d",
+    color: "#d9e8f5",
+    fontSize: "13px",
+  },
+
+  messageBubble: {
+    maxWidth: "82%",
+    padding: "12px",
+    border: "1px solid #26384f",
+    borderRadius: "12px",
+    lineHeight: 1.55,
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
+  },
+
+  botBubble: {
+    backgroundColor: "#1a293e",
+  },
+
+  userBubble: {
+    backgroundColor: "#008fb6",
+    borderColor: "#00a8d0",
+    color: "#ffffff",
+  },
+
+  messageLabel: {
+    marginBottom: "5px",
+    color: "#9db4c9",
+    fontSize: "10px",
+    fontWeight: 700,
+  },
+
+  messageText: {
+    fontSize: "13px",
+  },
+
+  speakButton: {
+    marginTop: "9px",
+    padding: "3px 0",
+    border: "none",
+    background: "transparent",
+    color: "#6bd8ef",
+    cursor: "pointer",
+    fontSize: "10px",
+  },
+
+  typing: {
+    color: "#9eb6ca",
+    fontSize: "12px",
+    fontStyle: "italic",
+  },
+
+  quickQuestions: {
+    display: "flex",
+    gap: "7px",
+    padding: "8px 12px",
+    overflowX: "auto",
+    borderTop: "1px solid #1d3045",
+    backgroundColor: "#0d1b30",
+  },
+
+  quickButton: {
+    flexShrink: 0,
+    padding: "8px 10px",
+    border: "1px solid #2c536d",
+    borderRadius: "8px",
+    backgroundColor: "#17283d",
+    color: "#c5dce9",
+    cursor: "pointer",
+    fontSize: "10px",
+  },
+
+  inputForm: {
+    display: "flex",
+    alignItems: "center",
+    gap: "7px",
+    padding: "10px",
+    borderTop: "1px solid #26384f",
+    backgroundColor: "#0c192c",
+  },
+
+  inputIconButton: {
+    width: "36px",
+    height: "36px",
+    flexShrink: 0,
+    border: "1px solid #2d465c",
+    borderRadius: "9px",
+    backgroundColor: "#17283d",
+    color: "#cce4f3",
+    cursor: "pointer",
+  },
+
+  textarea: {
+    flex: 1,
+    minWidth: 0,
+    resize: "none",
+    padding: "10px",
+    border: "1px solid #31506b",
+    borderRadius: "9px",
+    outline: "none",
+    backgroundColor: "#101e34",
+    color: "#e7f4ff",
+    fontFamily: "inherit",
+    fontSize: "12px",
+  },
+
+  sendButton: {
+    width: "38px",
+    height: "38px",
+    flexShrink: 0,
+    border: "none",
+    borderRadius: "9px",
+    backgroundColor: "#008fb6",
+    color: "#ffffff",
+    cursor: "pointer",
+    fontSize: "18px",
+  },
+
+  footer: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "8px",
+    padding: "8px 12px",
+    borderTop: "1px solid #1d3045",
+    backgroundColor: "#0a1425",
+  },
+
+  clearButton: {
+    border: "none",
+    background: "transparent",
+    color: "#69c9e1",
+    cursor: "pointer",
+    fontSize: "10px",
+  },
+
+  footerText: {
+    color: "#617f96",
+    fontSize: "9px",
+  },
+};

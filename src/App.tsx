@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import {
   BrowserRouter,
@@ -18,12 +19,8 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { EmergencyBanner } from "./components/EmergencyBanner";
 import { Navbar } from "./components/Navbar";
 import { Sidebar } from "./components/Sidebar";
-import { FloatingAIButton } from "./components/FloatingAIButton";
 import { AIChatbot } from "./components/AIChatbot";
 import { VoiceAssistant } from "./components/VoiceAssistant";
-
-// Constants
-import { USER_ROLES } from "./utils/constants";
 
 // Views
 import { Dashboard } from "./views/Dashboard";
@@ -62,18 +59,37 @@ function AppLayout() {
           : "min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950"
       }
     >
-      {/* Emergency Banner */}
-      {!isLoginPage && <EmergencyBanner />}
+      {/* =====================================================
+          COMMAND CENTER HEADER
+          Emergency Banner + Navbar
+      ====================================================== */}
 
-      {/* Navbar */}
       {!isLoginPage && (
-        <Navbar
-          onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
-          onOpenAI={() => setAiChatOpen(true)}
-        />
+        <div className="sticky top-0 z-[100] w-full">
+          {/* Emergency Warning Banner */}
+          <EmergencyBanner />
+
+          {/* Main Navigation */}
+          <Navbar
+            onToggleSidebar={() =>
+              setSidebarOpen((prev) => !prev)
+            }
+            onOpenAI={() => setAiChatOpen(true)}
+          />
+        </div>
       )}
 
-      <div className={isLoginPage ? "w-full" : "flex flex-1 relative"}>
+      {/* =====================================================
+          APPLICATION BODY
+      ====================================================== */}
+
+      <div
+        className={
+          isLoginPage
+            ? "w-full"
+            : "flex flex-1 relative"
+        }
+      >
         {/* Sidebar */}
         {!isLoginPage && (
           <Sidebar
@@ -90,17 +106,30 @@ function AppLayout() {
               : "flex-1 transition-all duration-200 p-4 sm:p-6 md:p-8 lg:ml-64"
           }
         >
-          <div className={isLoginPage ? "w-full" : "max-w-7xl mx-auto"}>
+          <div
+            className={
+              isLoginPage
+                ? "w-full"
+                : "max-w-7xl mx-auto"
+            }
+          >
             <Routes>
-
               {/* ================= PUBLIC ROUTES ================= */}
 
-              <Route path="/login" element={<Login />} />
+              <Route
+                path="/login"
+                element={<Login />}
+              />
 
-              <Route path="/about" element={<About />} />
+              <Route
+                path="/about"
+                element={<About />}
+              />
 
-              <Route path="/public" element={<PublicPortal />} />
-
+              <Route
+                path="/public"
+                element={<PublicPortal />}
+              />
 
               {/* ================= PROTECTED ROUTES ================= */}
 
@@ -230,14 +259,16 @@ function AppLayout() {
                 }
               />
 
-
               {/* ================= ADMIN ROUTES ================= */}
 
               <Route
                 path="/manage-dams"
                 element={
                   <ProtectedRoute
-                    allowedRoles={["admin", "govt_official"]}
+                    allowedRoles={[
+                      "admin",
+                      "govt_official",
+                    ]}
                   >
                     <ManageDams />
                   </ProtectedRoute>
@@ -248,41 +279,46 @@ function AppLayout() {
                 path="/manage-users"
                 element={
                   <ProtectedRoute
-                   allowedRoles={["admin"]}
+                    allowedRoles={["admin"]}
                   >
                     <ManageUsers />
                   </ProtectedRoute>
                 }
               />
 
-
-              {/* ================= DEFAULT ================= */}
+              {/* ================= DEFAULT ROUTES ================= */}
 
               <Route
                 path="/"
-                element={<Navigate to="/login" replace />}
+                element={
+                  <Navigate
+                    to="/login"
+                    replace
+                  />
+                }
               />
 
               <Route
                 path="*"
-                element={<Navigate to="/login" replace />}
+                element={
+                  <Navigate
+                    to="/login"
+                    replace
+                  />
+                }
               />
-
             </Routes>
           </div>
         </main>
       </div>
 
-
-      {/* ================= GLOBAL AI FEATURES ================= */}
+      {/* =====================================================
+          GLOBAL AI FEATURES
+          Chatbot opens only from the compact Navbar icon
+      ====================================================== */}
 
       {!isLoginPage && (
         <>
-          <FloatingAIButton
-            isOpen={aiChatOpen}
-            onClick={() => setAiChatOpen((prev) => !prev)}
-          />
-
           <AIChatbot
             isOpen={aiChatOpen}
             onClose={() => setAiChatOpen(false)}
@@ -294,7 +330,6 @@ function AppLayout() {
     </div>
   );
 }
-
 
 export default function App() {
   return (
