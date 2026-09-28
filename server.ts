@@ -1,4 +1,3 @@
-
 import express, { type Request, type Response } from "express";
 import dotenv from "dotenv";
 import path from "path";
@@ -22,8 +21,20 @@ const PORT = Number(process.env.PORT) || 3000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_MODEL = "gemini-3.8-flash";
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+
+// Gemini text-generation fallback chain.
+// These are text models suitable for the generateContent API.
+// If one is unavailable/busy, PRAVAH automatically tries the next one.
+const GEMINI_MODELS = [
+  "gemini-3.8-flash",
+  "gemini-3.7-flash",
+  "gemini-3.6-flash",
+  "gemini-3.5-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite",
+];
 
 app.use(express.json({ limit: "2mb" }));
 
@@ -127,7 +138,6 @@ app.get("/api/health", (_req: Request, res: Response) => {
     openaiConfigured: Boolean(OPENAI_API_KEY),
     openaiModel: OPENAI_MODEL,
     geminiConfigured: Boolean(GEMINI_API_KEY),
-    geminiModel: GEMINI_MODEL,
     timestamp: new Date().toISOString(),
   });
 });
@@ -224,7 +234,7 @@ app.post("/api/gemini/chat", async (req: Request, res: Response) => {
     if (!geminiClient) {
       return res.status(503).json({
         reply:
-          "PRAVAH Gemini service is not configured. Please check the server environment.",
+          "PRAVAH AI is not configured. Please check the server environment.",
         mode: "offline",
       });
     }
@@ -255,25 +265,43 @@ app.post("/api/gemini/chat", async (req: Request, res: Response) => {
       },
     ];
 
-    const response = await geminiClient.models.generateContent({
-      model: GEMINI_MODEL,
-      contents,
-      config: {
-        systemInstruction: getSystemInstruction(context),
-        temperature: 0.4,
-        maxOutputTokens: 1000,
-      },
-    });
+    let response: any = null;
+    let lastError: any = null;
+
+    for (const model of GEMINI_MODELS) {
+      try {
+        console.log(`PRAVAH AI trying model: ${model}`);
+
+        response = await geminiClient.models.generateContent({
+          model,
+          contents,
+          config: {
+            systemInstruction: getSystemInstruction(context),
+            maxOutputTokens: 1000,
+          },
+        });
+
+        console.log("PRAVAH AI response generated successfully.");
+        break;
+      } catch (error: any) {
+        lastError = error;
+
+        console.warn(
+          `PRAVAH AI model ${model} failed (${error?.status || "unknown"}). Trying next model...`
+        );
+      }
+    }
+
+    if (!response) {
+      throw lastError || new Error("All PRAVAH AI models are unavailable.");
+    }
 
     const reply = response.text || "No response generated.";
-
-    console.log("PRAVAH Gemini response generated.");
 
     return res.json({
       reply,
       mode: "live",
-      provider: "gemini",
-      model: GEMINI_MODEL,
+      provider: "PRAVAH",
     });
   } catch (error: any) {
     console.error("Gemini API Error:", error);
@@ -380,7 +408,7 @@ app.post("/api/gemini/risk-analysis", async (req: Request, res: Response) => {
 
     if (!geminiClient) {
       return res.status(503).json({
-        error: "Gemini API is not configured.",
+        error: "PRAVAH AI is not configured.",
         mode: "offline",
       });
     }
@@ -410,21 +438,41 @@ Clearly distinguish simulated data from verified observations.
 Do not issue unsupported official warnings or evacuation orders.
 `;
 
-    const response = await geminiClient.models.generateContent({
-      model: GEMINI_MODEL,
-      contents: prompt,
-      config: {
-        systemInstruction: getSystemInstruction({}),
-        temperature: 0.3,
-        maxOutputTokens: 1500,
-      },
-    });
+    let response: any = null;
+    let lastError: any = null;
+
+    for (const model of GEMINI_MODELS) {
+      try {
+        console.log(`PRAVAH AI risk analysis trying model: ${model}`);
+
+        response = await geminiClient.models.generateContent({
+          model,
+          contents: prompt,
+          config: {
+            systemInstruction: getSystemInstruction({}),
+            maxOutputTokens: 1500,
+          },
+        });
+
+        console.log("PRAVAH AI risk analysis generated successfully.");
+        break;
+      } catch (error: any) {
+        lastError = error;
+
+        console.warn(
+          `PRAVAH AI risk model ${model} failed (${error?.status || "unknown"}). Trying next model...`
+        );
+      }
+    }
+
+    if (!response) {
+      throw lastError || new Error("All PRAVAH AI models are unavailable.");
+    }
 
     return res.json({
       analysis: response.text || "No risk analysis was generated.",
       mode: "live",
-      provider: "gemini",
-      model: GEMINI_MODEL,
+      provider: "PRAVAH",
     });
   } catch (error: any) {
     console.error("Gemini Risk Analysis Error:", error);
@@ -476,8 +524,7 @@ async function startServer() {
       console.log(
         `Gemini: ${GEMINI_API_KEY ? "CONFIGURED" : "NOT CONFIGURED"}`
       );
-      console.log(`OpenAI Model: ${OPENAI_MODEL}`);
-      console.log(`Gemini Model: ${GEMINI_MODEL}`);
+      console.log("AI service: PRAVAH AI with automatic model fallback");
       console.log("==========================================");
     });
   } catch (error) {

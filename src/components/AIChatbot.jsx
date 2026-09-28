@@ -3,8 +3,8 @@ import React, { useEffect, useRef, useState } from "react";
 
 /**
  * PRAVAH AI Chatbot
- * Uses the backend OpenAI endpoint:
- * POST /api/openai/chat
+ * Uses the backend PRAVAH AI endpoint:
+ * POST /api/gemini/chat
  */
 
 const INITIAL_MESSAGE = {
@@ -12,6 +12,51 @@ const INITIAL_MESSAGE = {
   content:
     "Namaste! I am PRAVAH AI, your intelligent Dam Safety and Flood Disaster Assistant. Ask me about dam safety, flood preparedness, evacuation planning, or reservoir monitoring.",
 };
+
+// =====================================================
+// QUICK SEARCHES
+// =====================================================
+
+const QUICK_SEARCHES = [
+  {
+    label: "Flood safety",
+    prompt: "Explain general flood safety precautions.",
+  },
+  {
+    label: "Dam risk",
+    prompt: "What information is needed for dam flood risk analysis?",
+  },
+  {
+    label: "Water levels",
+    prompt:
+      "Explain reservoir water level, inflow, outflow, storage, and spillway status.",
+  },
+  {
+    label: "Dam break",
+    prompt:
+      "What should people do during a dam-break emergency?",
+  },
+  {
+    label: "Evacuation",
+    prompt:
+      "How should people prepare for flood evacuation and move to a safe area?",
+  },
+  {
+    label: "Safe shelters",
+    prompt:
+      "What should I check when choosing a safe flood shelter?",
+  },
+  {
+    label: "Heavy rainfall",
+    prompt:
+      "How can heavy rainfall affect reservoir levels and downstream flood risk?",
+  },
+  {
+    label: "Emergency kit",
+    prompt:
+      "What essential items should be kept in a flood emergency kit?",
+  },
+];
 
 function cleanText(text = "") {
   return String(text)
@@ -35,6 +80,7 @@ function speakText(text) {
 
   window.speechSynthesis.speak(speech);
 }
+
 
 export function AIChatbot({ isOpen, onClose }) {
   const [messages, setMessages] = useState([INITIAL_MESSAGE]);
@@ -88,7 +134,7 @@ export function AIChatbot({ isOpen, onClose }) {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/openai/chat", {
+      const response = await fetch("/api/gemini/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -113,14 +159,14 @@ export function AIChatbot({ isOpen, onClose }) {
 
       if (!response.ok) {
         throw new Error(
-          data?.error || "OpenAI request failed"
+          data?.error || "PRAVAH AI request failed"
         );
       }
 
       const assistantReply = cleanText(
         data?.reply ||
           data?.message ||
-          "No response was received from OpenAI."
+          "No response was received from PRAVAH AI."
       );
 
       const assistantMessage = {
@@ -137,18 +183,22 @@ export function AIChatbot({ isOpen, onClose }) {
         speakText(assistantReply);
       }
     } catch (error) {
-      console.error("PRAVAH OpenAI Chat Error:", error);
+      console.error("PRAVAH AI Chat Error:", error);
 
       const errorMessage = {
         role: "assistant",
         content:
-          "PRAVAH AI is temporarily unavailable. Please check whether the backend server is running and try again.",
+          "PRAVAH AI is temporarily unavailable. Please try again shortly.",
       };
 
       setMessages((previousMessages) => [
         ...previousMessages,
         errorMessage,
       ]);
+
+      if (voiceEnabled) {
+        speakText(errorMessage.content);
+      }
     } finally {
       setLoading(false);
     }
@@ -194,7 +244,7 @@ export function AIChatbot({ isOpen, onClose }) {
     <div style={styles.overlay}>
       <section
         style={styles.chatWindow}
-        aria-label="PRAVAH OpenAI chatbot"
+        aria-label="PRAVAH AI chatbot"
       >
         {/* HEADER */}
         <header style={styles.header}>
@@ -208,7 +258,7 @@ export function AIChatbot({ isOpen, onClose }) {
                 </strong>
 
                 <span style={styles.providerBadge}>
-                  OpenAI
+                  PRAVAH AI
                 </span>
               </div>
 
@@ -308,7 +358,7 @@ export function AIChatbot({ isOpen, onClose }) {
                 </div>
 
                 <div style={styles.typing}>
-                  OpenAI is preparing a response...
+                  PRAVAH AI is preparing a response...
                 </div>
               </div>
             </div>
@@ -317,31 +367,29 @@ export function AIChatbot({ isOpen, onClose }) {
           <div ref={messagesEndRef} />
         </main>
 
-        {/* QUICK QUESTIONS */}
-        <div style={styles.quickQuestions}>
-          <button
-            type="button"
-            onClick={() =>
-              sendMessage(
-                "Explain general flood safety precautions."
-              )
-            }
-            style={styles.quickButton}
-          >
-            Flood safety precautions
-          </button>
+        {/* QUICK SEARCHES */}
+        <div style={styles.quickSection}>
+          <div style={styles.quickHeader}>
+            <span style={styles.quickTitle}>Quick search</span>
+            <span style={styles.quickHint}>Tap to ask</span>
+          </div>
 
-          <button
-            type="button"
-            onClick={() =>
-              sendMessage(
-                "What information is needed for dam flood risk analysis?"
-              )
-            }
-            style={styles.quickButton}
-          >
-            Dam risk analysis
-          </button>
+          <div style={styles.quickQuestions}>
+            {QUICK_SEARCHES.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => sendMessage(item.prompt)}
+                disabled={loading}
+                style={{
+                  ...styles.quickButton,
+                  opacity: loading ? 0.55 : 1,
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* INPUT */}
@@ -396,7 +444,7 @@ export function AIChatbot({ isOpen, onClose }) {
           </button>
 
           <span style={styles.footerText}>
-            Powered by PRAVAH • OpenAI
+            Powered by PRAVAH
           </span>
         </footer>
       </section>
@@ -604,24 +652,53 @@ const styles = {
     fontStyle: "italic",
   },
 
+  quickSection: {
+    borderTop: "1px solid #1d3045",
+    backgroundColor: "#0d1b30",
+    paddingTop: "7px",
+  },
+
+  quickHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "0 12px 6px",
+  },
+
+  quickTitle: {
+    color: "#8fd9eb",
+    fontSize: "10px",
+    fontWeight: 700,
+    letterSpacing: "0.3px",
+    textTransform: "uppercase",
+  },
+
+  quickHint: {
+    color: "#56758b",
+    fontSize: "9px",
+  },
+
   quickQuestions: {
     display: "flex",
     gap: "7px",
-    padding: "8px 12px",
+    padding: "0 12px 9px",
     overflowX: "auto",
-    borderTop: "1px solid #1d3045",
-    backgroundColor: "#0d1b30",
+    overflowY: "hidden",
+    scrollbarWidth: "none",
   },
 
   quickButton: {
     flexShrink: 0,
-    padding: "8px 10px",
+    padding: "7px 11px",
     border: "1px solid #2c536d",
-    borderRadius: "8px",
+    borderRadius: "999px",
     backgroundColor: "#17283d",
     color: "#c5dce9",
     cursor: "pointer",
     fontSize: "10px",
+    fontWeight: 600,
+    whiteSpace: "nowrap",
+    transition: "all 0.2s ease",
   },
 
   inputForm: {
