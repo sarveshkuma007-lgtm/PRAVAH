@@ -3,15 +3,11 @@ import { useParams, Link } from "react-router-dom";
 import {
   Activity,
   ArrowLeft,
-  ShieldAlert,
-  Sliders,
   Cpu,
+  Sliders,
   Waves,
-  Clock,
-  Gauge,
-  CheckCircle2,
-  AlertOctagon,
   Sparkles,
+  Gauge,
 } from "lucide-react";
 import { DAMS_DATA } from "../data/damData";
 import { damService } from "../services/damService";
@@ -22,6 +18,7 @@ import { getRiskColorClass } from "../utils/helpers";
 
 export function DamDetail() {
   const { id } = useParams();
+
   const [dam, setDam] = useState(null);
   const [hydroData, setHydroData] = useState([]);
   const [aiReport, setAiReport] = useState("");
@@ -29,10 +26,17 @@ export function DamDetail() {
   const [activeGates, setActiveGates] = useState(24);
 
   useEffect(() => {
-    const found = DAMS_DATA.find((d) => d.id === id) || DAMS_DATA[0];
+    const found =
+      DAMS_DATA.find((d) => d.id === id) || DAMS_DATA[0];
+
     setDam(found);
     setActiveGates(found.gatesOpen);
-    const trend = damService.getWaterLevelTrend(found.id, 24);
+
+    const trend = damService.getWaterLevelTrend(
+      found.id,
+      24
+    );
+
     setHydroData(trend);
   }, [id]);
 
@@ -40,194 +44,375 @@ export function DamDetail() {
 
   const handleGenerateAiReport = async () => {
     setIsGeneratingAi(true);
+
     try {
-      const report = await geminiService.analyzeRisk(dam, {}, {});
+      const report = await geminiService.analyzeRisk(
+        dam,
+        {},
+        {}
+      );
+
       setAiReport(report);
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
     } finally {
       setIsGeneratingAi(false);
     }
   };
 
+  const gateDischarge = Math.round(
+    activeGates *
+      (dam.outflow / Math.max(1, dam.gatesOpen))
+  );
+
+  const levelBuffer =
+    Math.round(
+      (dam.dangerLevel - dam.currentWaterLevel) * 100
+    ) / 100;
+
   return (
-    <div className="space-y-6">
-      {/* Back and Title Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-slate-800">
-        <div>
-          <Link
-            to="/dam-monitoring"
-            className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-cyan-300 font-medium mb-1.5 transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Dam Fleet</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-black text-white font-sans">{dam.name}</h1>
-            <span className={`px-2.5 py-0.5 rounded text-xs font-mono font-bold uppercase ${getRiskColorClass(dam.riskLevel)}`}>
-              {dam.riskLevel}
-            </span>
+    <div className="space-y-6 pb-8">
+
+      {/* Header */}
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+
+          <div>
+            <Link
+              to="/dam-monitoring"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 mb-3"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back to Dam Monitoring
+            </Link>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-bold text-slate-900">
+                {dam.name}
+              </h1>
+
+              <span
+                className={`px-2.5 py-1 rounded-md text-[10px] font-bold ${getRiskColorClass(
+                  dam.riskLevel
+                )}`}
+              >
+                {dam.riskLevel}
+              </span>
+            </div>
+
+            <p className="text-sm text-slate-500 mt-1">
+              {dam.river} Basin • {dam.state}, India
+            </p>
+
+            <p className="text-xs text-slate-400 mt-1">
+              CWC Code:{" "}
+              <span className="font-medium text-slate-600">
+                {dam.cwcCode}
+              </span>
+            </p>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            {dam.river} Basin &bull; {dam.state}, India &bull; CWC Code: <span className="font-mono text-cyan-400">{dam.cwcCode}</span>
-          </p>
-        </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleGenerateAiReport}
-            disabled={isGeneratingAi}
-            className="flex items-center gap-1.5 px-3 py-2 bg-cyan-950 border border-cyan-500/50 hover:bg-cyan-900/60 text-cyan-300 text-xs font-semibold rounded-lg shadow-sm transition-colors"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-            <span>{isGeneratingAi ? "Computing AI Hydro Report..." : "AI Safety Audit"}</span>
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleGenerateAiReport}
+              disabled={isGeneratingAi}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg text-sm font-semibold transition-colors"
+            >
+              <Sparkles className="w-4 h-4" />
+              {isGeneratingAi
+                ? "Generating..."
+                : "AI Safety Audit"}
+            </button>
 
-          <Link
-            to={`/flood-prediction`}
-            className="flex items-center gap-1.5 px-3 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg shadow-md transition-colors"
-          >
-            <Cpu className="w-3.5 h-3.5" />
-            <span>Simulate Breach</span>
-          </Link>
+            <Link
+              to="/flood-prediction"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors"
+            >
+              <Cpu className="w-4 h-4" />
+              Simulate Breach
+            </Link>
+          </div>
         </div>
       </div>
 
-      {/* AI Hydrological Audit Banner if generated */}
+      {/* AI report */}
       {aiReport && (
-        <div className="p-4 rounded-xl bg-slate-900 border border-cyan-500/40 text-xs text-slate-200 shadow-xl space-y-2 animate-in fade-in duration-300">
-          <div className="flex items-center gap-2 text-cyan-400 font-bold font-mono">
-            <Sparkles className="w-4 h-4" />
-            <span>GEMINI HYDRAULIC VULNERABILITY ANALYSIS</span>
+        <section className="bg-white border border-blue-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="p-4 bg-blue-50 border-b border-blue-100 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-blue-600" />
+
+            <div>
+              <h2 className="text-sm font-bold text-blue-900">
+                AI Hydrological Safety Analysis
+              </h2>
+              <p className="text-xs text-blue-700 mt-0.5">
+                Generated from the selected dam telemetry.
+              </p>
+            </div>
           </div>
-          <p className="whitespace-pre-wrap leading-relaxed text-slate-300 font-sans">
+
+          <div className="p-5 text-sm text-slate-600 leading-6 whitespace-pre-wrap">
             {aiReport}
-          </p>
-        </div>
+          </div>
+        </section>
       )}
 
-      {/* Primary Metrics Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
-          <span className="text-[10px] uppercase font-mono text-slate-400 block">Current Water Level</span>
-          <p className="text-xl font-black text-slate-100 mt-1 font-mono">
-            {dam.currentWaterLevel} <span className="text-xs font-normal text-slate-400">m</span>
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className="text-xs text-slate-500">
+            Current Water Level
           </p>
-          <span className="text-[11px] text-red-400 font-mono">
-            Danger Mark: {dam.dangerLevel}m ({Math.round((dam.dangerLevel - dam.currentWaterLevel) * 100) / 100}m buffer)
-          </span>
+
+          <p className="text-2xl font-bold text-slate-900 mt-1">
+            {dam.currentWaterLevel}
+            <span className="text-sm font-medium text-slate-400 ml-1">
+              m
+            </span>
+          </p>
+
+          <p className="text-xs text-slate-500 mt-2">
+            Danger mark:{" "}
+            <span className="font-semibold text-red-600">
+              {dam.dangerLevel} m
+            </span>
+          </p>
+
+          <p className="text-[11px] text-slate-400 mt-1">
+            Buffer: {levelBuffer} m
+          </p>
         </div>
 
-        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
-          <span className="text-[10px] uppercase font-mono text-slate-400 block">Storage Utilization</span>
-          <p className="text-xl font-black text-amber-400 mt-1 font-mono">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className="text-xs text-slate-500">
+            Storage Utilization
+          </p>
+
+          <p className="text-2xl font-bold text-blue-600 mt-1">
             {dam.storagePercentage}%
           </p>
-          <span className="text-[11px] text-slate-400">
-            Capacity: {dam.capacity} MCM
-          </span>
-        </div>
 
-        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
-          <span className="text-[10px] uppercase font-mono text-slate-400 block">Inflow Runoff</span>
-          <p className="text-xl font-black text-blue-400 mt-1 font-mono">
-            {dam.inflow} <span className="text-xs font-normal text-slate-400">cumecs</span>
-          </p>
-          <span className="text-[11px] text-slate-400">
-            Catchment rate rising
-          </span>
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
-          <span className="text-[10px] uppercase font-mono text-slate-400 block">Spillway Discharge</span>
-          <p className="text-xl font-black text-orange-400 mt-1 font-mono">
-            {dam.outflow} <span className="text-xs font-normal text-slate-400">cumecs</span>
-          </p>
-          <span className="text-[11px] text-cyan-400 font-mono">
-            {activeGates} of {dam.totalGates} sluice gates open
-          </span>
-        </div>
-      </div>
-
-      {/* Hydrograph Chart & Sluice Gate Control */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 p-5 rounded-xl bg-slate-900/80 border border-slate-800 shadow-md">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider font-mono">
-              Inflow vs Outflow Hydrograph (24 Hours)
-            </h3>
-            <span className="text-xs text-slate-400 font-mono">Hourly CWC Log</span>
-          </div>
-          <WaterLevelChart data={hydroData} dam={dam} />
-        </div>
-
-        {/* Spillway Gate Aperture Control (For Authorized Engineers) */}
-        <div className="p-5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-4">
-          <div className="flex items-center gap-2">
-            <Sliders className="w-4 h-4 text-cyan-400" />
-            <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider font-mono">
-              Sluice Gate Aperture
-            </h3>
-          </div>
-          <p className="text-xs text-slate-400 leading-relaxed">
-            Spillway rule curve discharge regulation for {dam.name}.
-          </p>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs font-mono">
-              <span className="text-slate-300">Open Spillway Gates:</span>
-              <span className="text-cyan-400 font-bold">{activeGates} / {dam.totalGates}</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={dam.totalGates}
-              value={activeGates}
-              onChange={(e) => setActiveGates(Number(e.target.value))}
-              className="w-full accent-cyan-500 cursor-pointer"
+          <div className="h-1.5 bg-slate-100 rounded-full mt-3 overflow-hidden">
+            <div
+              className="h-full bg-blue-600 rounded-full"
+              style={{
+                width: `${Math.min(
+                  dam.storagePercentage,
+                  100
+                )}%`,
+              }}
             />
           </div>
 
-          <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 text-xs space-y-1.5 font-mono">
-            <div className="flex justify-between text-slate-400">
-              <span>Gate Discharge Est:</span>
-              <span className="text-white font-bold">{Math.round(activeGates * (dam.outflow / Math.max(1, dam.gatesOpen)))} cumecs</span>
-            </div>
-            <div className="flex justify-between text-slate-400">
-              <span>Rule Curve Safe Limit:</span>
-              <span className="text-emerald-400 font-bold">4,200 cumecs</span>
-            </div>
-          </div>
+          <p className="text-[11px] text-slate-400 mt-2">
+            Capacity: {dam.capacity} MCM
+          </p>
+        </div>
 
-          <div className="pt-2 border-t border-slate-800">
-            <span className="text-[11px] font-semibold text-slate-400 block mb-1">
-              Structural Telemetry Sensors:
-            </span>
-            <ul className="text-xs text-slate-300 space-y-1">
-              <li className="flex items-center justify-between">
-                <span>Crest Piezometer Pore Pressure:</span>
-                <span className="text-emerald-400 font-mono">0.38 MPa (Normal)</span>
-              </li>
-              <li className="flex items-center justify-between">
-                <span>Foundation Seepage Rate:</span>
-                <span className="text-amber-400 font-mono">14.2 L/min (Elevated)</span>
-              </li>
-              <li className="flex items-center justify-between">
-                <span>Seismic Accelerometer:</span>
-                <span className="text-emerald-400 font-mono">0.012g (Quiet)</span>
-              </li>
-            </ul>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className="text-xs text-slate-500">
+            Current Inflow
+          </p>
+
+          <p className="text-2xl font-bold text-blue-600 mt-1">
+            {dam.inflow}
+          </p>
+
+          <p className="text-xs text-slate-400 mt-1">
+            cubic metres / second
+          </p>
+
+          <div className="flex items-center gap-1.5 mt-3 text-xs text-slate-500">
+            <Waves className="w-3.5 h-3.5 text-blue-500" />
+            Catchment inflow
           </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className="text-xs text-slate-500">
+            Spillway Outflow
+          </p>
+
+          <p className="text-2xl font-bold text-orange-600 mt-1">
+            {dam.outflow}
+          </p>
+
+          <p className="text-xs text-slate-400 mt-1">
+            cubic metres / second
+          </p>
+
+          <p className="text-xs text-slate-500 mt-3">
+            Gates open:{" "}
+            <span className="font-semibold text-slate-700">
+              {activeGates}/{dam.totalGates}
+            </span>
+          </p>
         </div>
       </div>
 
-      {/* Basin Location Map */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider font-mono">
-          Basin Topography &amp; Downstream Spillway Channel
-        </h3>
-        <FloodMap selectedDam={dam} center={[dam.lat, dam.lng]} zoom={10} height="360px" />
+      {/* Chart + gate control */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        <section className="lg:col-span-2 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-slate-200">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Activity className="w-5 h-5 text-blue-600" />
+
+                <div>
+                  <h2 className="font-semibold text-slate-900">
+                    Inflow vs Outflow Hydrograph
+                  </h2>
+
+                  <p className="text-xs text-slate-500 mt-1">
+                    24-hour monitoring trend
+                  </p>
+                </div>
+              </div>
+
+              <span className="text-xs text-slate-400">
+                Hourly log
+              </span>
+            </div>
+          </div>
+
+          <div className="p-4">
+            <WaterLevelChart
+              data={hydroData}
+              dam={dam}
+            />
+          </div>
+        </section>
+
+        {/* Gate control */}
+        <section className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-slate-200">
+            <div className="flex items-center gap-2">
+              <Sliders className="w-5 h-5 text-blue-600" />
+
+              <div>
+                <h2 className="font-semibold text-slate-900">
+                  Sluice Gate Status
+                </h2>
+
+                <p className="text-xs text-slate-500 mt-1">
+                  Operational test control
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-5 space-y-5">
+
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-slate-600">
+                  Gates Open
+                </span>
+
+                <span className="text-sm font-bold text-blue-600">
+                  {activeGates} / {dam.totalGates}
+                </span>
+              </div>
+
+              <input
+                type="range"
+                min={0}
+                max={dam.totalGates}
+                value={activeGates}
+                onChange={(e) =>
+                  setActiveGates(Number(e.target.value))
+                }
+                className="w-full accent-blue-600"
+              />
+            </div>
+
+            <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-3">
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">
+                  Estimated discharge
+                </span>
+
+                <span className="font-semibold text-slate-800">
+                  {gateDischarge} cumecs
+                </span>
+              </div>
+
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">
+                  Rule curve safe limit
+                </span>
+
+                <span className="font-semibold text-green-600">
+                  4,200 cumecs
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Gauge className="w-4 h-4 text-blue-600" />
+
+                <h3 className="text-sm font-semibold text-slate-800">
+                  Structural Telemetry
+                </h3>
+              </div>
+
+              <div className="space-y-2.5 text-xs">
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-500">
+                    Crest piezometer
+                  </span>
+                  <span className="font-semibold text-green-600">
+                    0.38 MPa • Normal
+                  </span>
+                </div>
+
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-500">
+                    Foundation seepage
+                  </span>
+                  <span className="font-semibold text-amber-600">
+                    14.2 L/min • Elevated
+                  </span>
+                </div>
+
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-500">
+                    Seismic accelerometer
+                  </span>
+                  <span className="font-semibold text-green-600">
+                    0.012g • Quiet
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
+
+      {/* Map */}
+      <section className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-slate-200">
+          <h2 className="font-semibold text-slate-900">
+            Basin Location & Downstream Flood Channel
+          </h2>
+
+          <p className="text-xs text-slate-500 mt-1">
+            Geographic context for {dam.name} and its downstream basin.
+          </p>
+        </div>
+
+        <div className="p-3">
+          <FloodMap
+            selectedDam={dam}
+            center={[dam.lat, dam.lng]}
+            zoom={10}
+            height="360px"
+          />
+        </div>
+      </section>
     </div>
   );
 }

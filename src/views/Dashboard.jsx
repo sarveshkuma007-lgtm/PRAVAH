@@ -1,524 +1,871 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ShieldAlert,
   Activity,
-  AlertOctagon,
-  Cpu,
-  Waves,
-  ChevronRight,
-  MapPin,
+  AlertTriangle,
+  Bell,
+  CloudRain,
   Droplets,
   Gauge,
-  CloudRain,
-  Radio,
-  Wind,
+  MapPin,
+  ArrowUpRight,
+  ShieldCheck,
+  FileText,
+  Route,
+  Building2,
+  BarChart3,
+  ChevronRight,
+  Settings2,
 } from "lucide-react";
 
 import { useEmergency } from "../context/EmergencyContext";
+import { useWeather } from "../hooks/useWeather";
 import { damService } from "../services/damService";
 import { DAMS_DATA } from "../data/damData";
-import { AlertCard } from "../components/AlertCard";
-import { WeatherWidget } from "../components/WeatherWidget";
-import { WaterLevelChart } from "../components/WaterLevelChart";
-import { DamHealthCard } from "../components/DamHealthCard";
 import { FloodMap } from "../components/FloodMap";
 
-// =====================================================
-// INLINE HOOK: useCountUp
-// Animates a number from its previous value to a new
-// target whenever `target` changes. Used by TelemetryCard.
-// =====================================================
-function useCountUp(target, duration = 800) {
-  const [value, setValue] = useState(0);
-  const fromRef = useRef(0);
-  const frameRef = useRef(null);
-  const startRef = useRef(null);
 
-  useEffect(() => {
-    fromRef.current = value;
-    startRef.current = null;
+const DAM_IMAGES = {
+  "dam-tehri": "/images/dams/tehri-dam.webp.webp",
+  "dam-hirakud": "/images/dams/hirakud-dam.webp.webp",
+  "dam-sardar-sarovar": "/images/dams/sardar-sarovar-dam.jpg.jpg",
+  "dam-bhakra": "/images/dams/bhakra-dam.webp.webp",
+  "dam-rihand": "/images/dams/rihand-dam.jpg.jpg",
+  "dam-idukki": "/images/dams/idukki-dam.jpg.jpg",
+  "dam-nagarjuna": "/images/dams/nagarjuna-sagar-dam.jpg.jpg",
+  "dam-koyna": "/images/dams/koyna-dam.jpg.jpg",
+};
 
-    const step = (ts) => {
-      if (startRef.current === null) startRef.current = ts;
-      const progress = Math.min((ts - startRef.current) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setValue(Math.round(fromRef.current + (target - fromRef.current) * eased));
-      if (progress < 1) frameRef.current = requestAnimationFrame(step);
-    };
 
-    frameRef.current = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frameRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target, duration]);
-
-  return value;
-}
-
-// =====================================================
-// INLINE COMPONENT: TelemetryCard
-// One KPI tile in the telemetry strip. Severity controls
-// border color, glow, and whether it pulses.
-// =====================================================
-function TelemetryCard({ label, value, unit, icon: Icon, color, severity }) {
-  const animatedValue = useCountUp(value);
-
-  const severityBorder =
-    severity === "critical"
-      ? "border-red-600 shadow-[0_0_18px_-4px_rgba(239,68,68,0.5)]"
-      : severity === "warning"
-      ? "border-amber-700"
-      : "border-[#153452]";
-
-  const barColor =
-    severity === "critical"
-      ? "from-red-500 to-transparent"
-      : severity === "warning"
-      ? "from-amber-500 to-transparent"
-      : "from-cyan-500/70 to-transparent";
-
-  return (
-    <div
-      className={`relative border bg-[#07172d] p-3 ${severityBorder} ${
-        severity === "critical" ? "animate-pulse" : ""
-      }`}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[9px] font-bold tracking-wider text-slate-400">
-          {label}
-        </span>
-        <Icon className={`h-4 w-4 ${color}`} />
-      </div>
-
-      <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-2xl font-bold text-white tabular-nums">
-          {animatedValue}
-        </span>
-        <span className={`text-[10px] font-bold ${color}`}>{unit}</span>
-      </div>
-
-      <div className={`mt-2 h-0.5 bg-gradient-to-r ${barColor}`} />
-    </div>
-  );
-}
-
-// =====================================================
-// MAIN COMPONENT: Dashboard
-// =====================================================
 export function Dashboard() {
   const {
     alerts,
     activeAlertsCount,
     criticalAlertsCount,
-    acknowledgeAlert,
   } = useEmergency();
 
-  const [selectedDam, setSelectedDam] = useState(DAMS_DATA[1]);
+  const [selectedDam, setSelectedDam] = useState(
+    DAMS_DATA.find((d) =>
+      d.name?.toLowerCase().includes("hirakud")
+    ) || DAMS_DATA[0]
+  );
+
   const [hydroData, setHydroData] = useState([]);
 
   useEffect(() => {
     if (selectedDam) {
-      const trend = damService.getWaterLevelTrend(selectedDam.id, 24);
-      setHydroData(trend);
+      setHydroData(
+        damService.getWaterLevelTrend(selectedDam.id, 24)
+      );
     }
   }, [selectedDam]);
 
-  const criticalDams = DAMS_DATA.filter(
-    (dam) =>
-      dam.riskLevel === "CRITICAL" || dam.riskLevel === "HIGH"
+  const { weather } = useWeather(
+    selectedDam?.name || "Hirakud Dam"
+  );
+
+  const current = weather?.current;
+
+  const criticalDams = DAMS_DATA.filter((d) =>
+    ["CRITICAL", "HIGH"].includes(d.riskLevel)
   );
 
   const avgStorage = Math.round(
     DAMS_DATA.reduce(
-      (total, dam) => total + dam.storagePercentage,
+      (sum, d) => sum + Number(d.storagePercentage || 0),
       0
-    ) / DAMS_DATA.length
+    ) / Math.max(DAMS_DATA.length, 1)
   );
 
-  const telemetryItems = [
-    {
-      label: "MONITORED DAMS",
-      value: DAMS_DATA.length,
-      unit: "ACTIVE",
-      icon: Radio,
-      color: "text-cyan-400",
-      severity: "ok",
-    },
-    {
-      label: "CRITICAL / HIGH",
-      value: criticalDams.length,
-      unit: "DAMS",
-      icon: AlertOctagon,
-      color: "text-red-400",
-      severity: criticalDams.length > 0 ? "critical" : "ok",
-    },
-    {
-      label: "RESERVOIR STORAGE",
-      value: avgStorage,
-      unit: "%",
-      icon: Waves,
-      color: "text-amber-400",
-      severity: avgStorage > 85 ? "warning" : "ok",
-    },
-    {
-      label: "ACTIVE BULLETINS",
-      value: activeAlertsCount,
-      unit: "ALERTS",
-      icon: ShieldAlert,
-      color: "text-red-400",
-      severity: activeAlertsCount > 0 ? "warning" : "ok",
-    },
-  ];
+  const waterLevel =
+    selectedDam?.currentWaterLevel ?? 124.6;
+
+  const inflow =
+    selectedDam?.inflow ?? 12450;
+
+  const outflow =
+    selectedDam?.outflow ?? 10800;
+
+  const storage =
+    selectedDam?.storagePercentage ?? 81;
 
   return (
-    <div className="min-h-full space-y-4 bg-[#020817] pb-8">
+    <div className="pravah-dashboard min-h-full space-y-5 bg-slate-50 text-slate-900 -m-4 sm:-m-6 md:-m-8 p-4 sm:p-6 lg:p-7">
 
-      {/* COMMAND CENTER HEADER */}
-      <header className="rounded-lg border border-cyan-950 bg-[#07172d] px-4 py-4 shadow-lg shadow-cyan-950/10">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      {/* ================= HERO ================= */}
 
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded border border-cyan-700 bg-cyan-950/50">
-              <Droplets className="h-6 w-6 text-cyan-400" />
-            </div>
+      <section
+        className="relative min-h-[175px] overflow-hidden rounded-2xl bg-slate-900 shadow-sm"
+        style={{
+          backgroundImage: `url("${DAM_IMAGES[selectedDam?.id] || DAM_IMAGES["dam-hirakud"]}")`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/65 to-slate-950/35" />
+        <div className="absolute inset-0 bg-black/10" />
+
+        <div className="relative z-10 flex min-h-[175px] flex-col justify-between p-6 lg:p-7">
+
+          <span className="w-fit rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-[11px] font-bold text-emerald-300">
+            ● REAL-TIME MONITORING
+          </span>
+
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
 
             <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-lg font-bold tracking-wide text-white md:text-xl">
-                  PRAVAH
-                </h1>
+              <h1 className="text-4xl font-extrabold tracking-tight text-white lg:text-5xl">
+                {selectedDam?.name || "Hirakud Dam"}
+              </h1>
 
-                <span className="border border-cyan-800 bg-cyan-950 px-2 py-0.5 text-[10px] font-bold tracking-wider text-cyan-400">
-                  HYDRO INTELLIGENCE
-                </span>
+              <p className="mt-1 text-xs font-semibold text-sky-200">
+                {selectedDam?.state || "India"} · {selectedDam?.river || "River Basin"}
+              </p>
 
-                <span className="flex items-center gap-1 border border-emerald-800 bg-emerald-950/50 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                  SYSTEM ONLINE
-                </span>
-              </div>
-
-              <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-slate-400">
-                National Dam Flood Monitoring & Response Platform
+              <p className="mt-1 text-sm text-slate-200 lg:text-base">
+                Safe Rivers
+                <span className="mx-2">|</span>
+                Safer Communities
+                <span className="mx-2">|</span>
+                A Resilient Tomorrow
               </p>
             </div>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="border border-slate-700 bg-slate-950 px-3 py-2 text-[10px] font-mono text-slate-400">
-              DATA MODE: DEMONSTRATION
+            <div className="flex overflow-hidden rounded-xl border border-white/15 bg-slate-950/65 backdrop-blur-md">
+
+              <HeroMetric
+                label="Water Level"
+                value={`${waterLevel} m`}
+                change="+2.8 m"
+              />
+
+              <HeroMetric
+                label="Inflow (24h)"
+                value={`${Number(inflow).toLocaleString()} m³/s`}
+              />
+
+              <HeroMetric
+                label="Outflow (24h)"
+                value={`${Number(outflow).toLocaleString()} m³/s`}
+              />
+
+              <HeroMetric
+                label="Storage Level"
+                value={`${storage}%`}
+                progress={storage}
+              />
+
             </div>
-
-            <Link
-              to="/flood-prediction"
-              className="flex items-center gap-2 border border-cyan-800 bg-cyan-950/60 px-3 py-2 text-xs font-semibold text-cyan-300 transition hover:bg-cyan-900"
-            >
-              <Cpu className="h-3.5 w-3.5" />
-              Breach Simulation
-            </Link>
-
-            <Link
-              to="/emergency-response"
-              className="flex items-center gap-2 border border-red-700 bg-red-700 px-3 py-2 text-xs font-bold text-white transition hover:bg-red-600"
-            >
-              <ShieldAlert className="h-3.5 w-3.5" />
-              Emergency
-            </Link>
           </div>
         </div>
-      </header>
-
-      {/* TELEMETRY STRIP */}
-      <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {telemetryItems.map((item) => (
-          <TelemetryCard key={item.label} {...item} />
-        ))}
       </section>
 
-      {/* MAIN COMMAND CENTER GRID */}
-      <section className="grid grid-cols-1 gap-3 xl:grid-cols-12">
+      {/* ================= KPI ================= */}
 
-        {/* LEFT TELEMETRY PANEL */}
-        <aside className="space-y-3 xl:col-span-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
 
-          <div className="border border-[#153452] bg-[#07172d]">
-            <div className="flex items-center gap-2 border-b border-[#153452] bg-[#0b2340] px-3 py-2">
-              <Gauge className="h-4 w-4 text-cyan-400" />
-              <h2 className="text-[11px] font-bold uppercase tracking-wider text-cyan-200">
-                Dam Monitoring
-              </h2>
-            </div>
+        <MetricCard
+          icon={Droplets}
+          title="Monitored Dams"
+          value={DAMS_DATA.length}
+          subtitle="7 Normal  |  1 Warning"
+        />
 
-            <div className="space-y-2 p-3">
-              <label className="text-[10px] uppercase tracking-wider text-slate-400">
-                Selected Reservoir
+        <MetricCard
+          icon={AlertTriangle}
+          title="High Risk Dams"
+          value={criticalDams.length}
+          danger
+          subtitle="2 Critical  |  1 Moderate"
+        />
+
+        <MetricCard
+          icon={Gauge}
+          title="Reservoir Storage"
+          value={`${avgStorage}%`}
+          subtitle="Live storage across all monitored dams"
+          progress={avgStorage}
+        />
+
+        <MetricCard
+          icon={Bell}
+          title="Active Alerts"
+          value={activeAlertsCount}
+          warning
+          subtitle={`${criticalAlertsCount} Critical  |  1 High  |  1 Medium`}
+        />
+
+      </div>
+
+      {/* ================= MAIN ================= */}
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+
+        <div className="min-w-0">
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[270px_minmax(0,1fr)]">
+
+            {/* DAM DETAILS */}
+
+            <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+
+              <SectionTitle
+                icon={Activity}
+                title="Dam Monitoring"
+              />
+
+              <label className="mt-4 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Select Reservoir
               </label>
 
               <select
                 value={selectedDam?.id || ""}
-                onChange={(event) => {
-                  const dam = DAMS_DATA.find(
-                    (item) => item.id === event.target.value
-                  );
-
-                  if (dam) {
-                    setSelectedDam(dam);
-                  }
-                }}
-                className="w-full border border-cyan-900 bg-[#020817] px-2 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400"
+                onChange={(e) =>
+                  setSelectedDam(
+                    DAMS_DATA.find(
+                      (d) => d.id === e.target.value
+                    ) || selectedDam
+                  )
+                }
+                className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 outline-none focus:border-blue-500"
               >
-                {DAMS_DATA.map((dam) => (
-                  <option key={dam.id} value={dam.id}>
-                    {dam.name}
+                {DAMS_DATA.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
                   </option>
                 ))}
               </select>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div className="border border-slate-800 bg-[#020817] p-2">
-                  <p className="text-[9px] text-slate-500">LOCATION</p>
-                  <p className="mt-1 truncate text-[11px] font-semibold text-slate-200">
-                    {selectedDam?.state || "India"}
-                  </p>
-                </div>
+              <div className="mt-4 space-y-3">
 
-                <div className="border border-slate-800 bg-[#020817] p-2">
-                  <p className="text-[9px] text-slate-500">RISK LEVEL</p>
-                  <p
-                    className={`mt-1 text-[11px] font-bold ${
-                      selectedDam?.riskLevel === "CRITICAL"
-                        ? "text-red-400"
-                        : selectedDam?.riskLevel === "HIGH"
-                          ? "text-amber-400"
-                          : "text-emerald-400"
-                    }`}
-                  >
-                    {selectedDam?.riskLevel || "UNKNOWN"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+                <InfoRow
+                  label="Location"
+                  value={selectedDam?.state || "Odisha"}
+                />
 
-          <div className="border border-[#153452] bg-[#07172d]">
-            <div className="flex items-center gap-2 border-b border-[#153452] bg-[#0b2340] px-3 py-2">
-              <Activity className="h-4 w-4 text-cyan-400" />
-              <h2 className="text-[11px] font-bold uppercase tracking-wider text-cyan-200">
-                Network Status
-              </h2>
-            </div>
+                <InfoRow
+                  label="River"
+                  value={selectedDam?.river || "Mahanadi"}
+                />
 
-            <div className="space-y-3 p-3">
-              {[
-                ["Telemetry Network", "ONLINE"],
-                ["GIS Services", "CONNECTED"],
-                ["Weather Service", "AVAILABLE"],
-                ["AI Risk Engine", "READY"],
-              ].map(([label, status]) => (
-                <div
-                  key={label}
-                  className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2 last:border-0 last:pb-0"
-                >
-                  <span className="text-[10px] text-slate-400">
-                    {label}
-                  </span>
+                <InfoRow
+                  label="Risk Level"
+                  value={selectedDam?.riskLevel || "CRITICAL"}
+                  danger
+                />
 
-                  <span className="flex items-center gap-1.5 text-[9px] font-bold text-emerald-400">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    </span>
-                    {status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+                <InfoRow
+                  label="Current Water Level"
+                  value={`${waterLevel} m`}
+                />
 
-        </aside>
+                <InfoRow
+                  label="Full Reservoir Level"
+                  value={`${selectedDam?.dangerLevel || 630} m`}
+                />
 
-        {/* CENTRAL GIS MAP */}
-        <div className="space-y-2 xl:col-span-6">
-          <div className="flex items-center justify-between border border-[#153452] bg-[#07172d] px-3 py-2">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-cyan-400" />
+                <InfoRow
+                  label="Inflow (24h)"
+                  value={`${Number(inflow).toLocaleString()} m³/s`}
+                />
 
-              <div>
-                <h2 className="text-[11px] font-bold uppercase tracking-wider text-cyan-200">
-                  Live Flood GIS Map
-                </h2>
+                <InfoRow
+                  label="Outflow (24h)"
+                  value={`${Number(outflow).toLocaleString()} m³/s`}
+                />
 
-                <p className="text-[9px] text-slate-500">
-                  Reservoirs / Flood Zones / Downstream Risk
-                </p>
-              </div>
-            </div>
+                <InfoRow
+                  label="Spillway Status"
+                  value={outflow > 0 ? "Discharging" : "Normal"}
+                  danger={outflow > 0}
+                />
 
-            <Link
-              to="/live-map"
-              className="flex items-center gap-1 text-[10px] font-semibold text-cyan-400 hover:text-cyan-200"
-            >
-              Expand
-              <ChevronRight className="h-3 w-3" />
-            </Link>
-          </div>
-
-          <div className="overflow-hidden border border-cyan-900 bg-[#020817] p-1">
-            <FloodMap
-              selectedDam={selectedDam}
-              height="520px"
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 border border-[#153452] bg-[#07172d] px-3 py-2 text-[9px] text-slate-400">
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-cyan-400" />
-              DAMS
-            </span>
-
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-red-500" />
-              BREACH ZONES
-            </span>
-
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-emerald-400" />
-              SAFE AREAS
-            </span>
-
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-amber-400" />
-              HIGH RISK
-            </span>
-          </div>
-        </div>
-
-        {/* RIGHT WEATHER AND ALERT PANEL */}
-        <aside className="space-y-3 xl:col-span-3">
-
-          <div className="border border-[#153452] bg-[#07172d]">
-            <div className="flex items-center gap-2 border-b border-[#153452] bg-[#0b2340] px-3 py-2">
-              <CloudRain className="h-4 w-4 text-cyan-400" />
-              <h2 className="text-[11px] font-bold uppercase tracking-wider text-cyan-200">
-                Catchment Weather
-              </h2>
-            </div>
-
-            <div className="p-2">
-              <WeatherWidget
-                damName={selectedDam?.name || "Hirakud Dam"}
-              />
-            </div>
-          </div>
-
-          <div className="border border-red-950 bg-[#07172d]">
-            <div className="flex items-center justify-between border-b border-red-950 bg-red-950/40 px-3 py-2">
-              <div className="flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-red-400" />
-                <h2 className="text-[11px] font-bold uppercase tracking-wider text-red-300">
-                  Alert Center
-                </h2>
               </div>
 
-              <span
-                className={`text-[10px] font-bold text-red-400 ${
-                  criticalAlertsCount > 0 ? "animate-pulse" : ""
-                }`}
+              <Link
+                to={`/dam/${selectedDam?.id}`}
+                className="mt-4 flex items-center justify-center rounded-lg border border-blue-500 bg-blue-50 py-2 text-sm font-bold text-blue-600 hover:bg-blue-100"
               >
-                {criticalAlertsCount} CRITICAL
-              </span>
-            </div>
+                View Detailed Data
+                <ArrowUpRight className="ml-1 h-4 w-4" />
+              </Link>
 
-            <div className="max-h-[260px] space-y-2 overflow-y-auto p-2">
-              {alerts.length > 0 ? (
-                alerts.slice(0, 3).map((alert) => (
-                  <AlertCard
-                    key={alert.id}
-                    alert={alert}
-                    onAcknowledge={acknowledgeAlert}
-                    compact={true}
-                  />
-                ))
-              ) : (
-                <div className="p-4 text-center text-[10px] text-slate-500">
-                  No active alerts
+            </section>
+
+            {/* MAP */}
+
+            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+
+                <SectionTitle
+                  icon={MapPin}
+                  title="Live Flood Map"
+                  subtitle="Reservoirs, Flood Zones and Downstream Risk"
+                />
+
+                <div className="flex rounded-lg bg-slate-100 p-1">
+                  <button className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-bold text-white">
+                    Map
+                  </button>
+
+                  <button className="px-3 py-1.5 text-xs text-slate-600">
+                    Satellite
+                  </button>
+
+                  <button className="px-3 py-1.5 text-xs text-slate-600">
+                    Terrain
+                  </button>
                 </div>
-              )}
+
+              </div>
+
+              <div className="p-2">
+                <FloodMap
+                  selectedDam={selectedDam}
+                  height="500px"
+                />
+              </div>
+
+            </section>
+
+          </div>
+
+          {/* QUICK ACTIONS */}
+
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.7fr_.8fr_1fr]">
+
+            <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+
+              <SectionTitle
+                icon={Settings2}
+                title="Quick Actions"
+              />
+
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+
+                <QuickAction
+                  to="/dam-monitoring"
+                  icon={Building2}
+                  label="View Dams"
+                />
+
+                <QuickAction
+                  to="/weather"
+                  icon={CloudRain}
+                  label="Check Forecast"
+                />
+
+                <QuickAction
+                  to="/alerts"
+                  icon={Bell}
+                  label="View Alerts"
+                  danger
+                />
+
+                <QuickAction
+                  to="/safe-routes"
+                  icon={Route}
+                  label="Safe Routes"
+                />
+
+                <QuickAction
+                  to="/reports"
+                  icon={FileText}
+                  label="Generate Report"
+                />
+
+              </div>
+
+            </section>
+
+            {/* SYSTEM STATUS */}
+
+            <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+
+              <SectionTitle
+                icon={ShieldCheck}
+                title="System Status"
+              />
+
+              <div className="mt-3 space-y-2 text-xs">
+
+                <Status
+                  label="Telemetry Network"
+                  value="Online"
+                />
+
+                <Status
+                  label="GIS Services"
+                  value="Connected"
+                />
+
+                <Status
+                  label="Weather Service"
+                  value="Available"
+                />
+
+                <Status
+                  label="AI Risk Engine"
+                  value="Ready"
+                />
+
+              </div>
+
+            </section>
+
+            {/* PREPAREDNESS */}
+
+            <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+
+              <SectionTitle
+                icon={ShieldCheck}
+                title="Disaster Preparedness"
+              />
+
+              <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                Access evacuation routes, shelter locations and emergency contacts.
+              </p>
+
+              <Link
+                to="/safe-routes"
+                className="mt-3 block rounded-lg border border-blue-500 py-2 text-center text-xs font-bold text-blue-600 hover:bg-blue-50"
+              >
+                View Safety Resources →
+              </Link>
+
+            </section>
+
+          </div>
+
+        </div>
+
+        {/* RIGHT COLUMN */}
+
+        <aside className="space-y-4">
+
+          <WeatherPanel current={current} />
+
+          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+
+              <SectionTitle
+                icon={Bell}
+                title="Recent Alerts"
+              />
+
+              <Link
+                to="/alerts"
+                className="text-xs font-bold text-blue-600"
+              >
+                View All →
+              </Link>
+
             </div>
 
-            <Link
-              to="/alerts"
-              className="flex items-center justify-center gap-1 border-t border-red-950 px-3 py-2 text-[10px] font-semibold text-cyan-400 hover:bg-cyan-950/30"
-            >
-              View All Alerts
-              <ChevronRight className="h-3 w-3" />
-            </Link>
-          </div>
+            <div className="divide-y divide-slate-100">
+
+              {alerts.slice(0, 4).map((alert, index) => (
+
+                <div
+                  key={alert.id || index}
+                  className="p-3.5"
+                >
+
+                  <div className="flex items-center justify-between">
+
+                    <span
+                      className={`rounded px-2 py-0.5 text-[10px] font-black uppercase ${
+                        index === 0
+                          ? "bg-red-100 text-red-600"
+                          : index === 1
+                          ? "bg-orange-100 text-orange-600"
+                          : "bg-amber-100 text-amber-700"
+                      }`}
+                    >
+                      {index === 0
+                        ? "Critical"
+                        : index === 1
+                        ? "High"
+                        : "Medium"}
+                    </span>
+
+                    <span className="text-[10px] text-slate-400">
+                      {index * 2 + 1}h ago
+                    </span>
+
+                  </div>
+
+                  <p className="mt-2 text-sm font-bold text-slate-800">
+                    {alert.title || "Rising Water Level"}
+                  </p>
+
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                    {alert.description ||
+                      "Water level requires continued monitoring and response readiness."}
+                  </p>
+
+                </div>
+
+              ))}
+
+            </div>
+
+          </section>
 
         </aside>
-      </section>
 
-      {/* HYDROLOGICAL TELEMETRY CHART */}
-      <section className="border border-[#153452] bg-[#07172d]">
-        <div className="flex flex-col gap-2 border-b border-[#153452] bg-[#0b2340] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-cyan-400" />
+      </div>
 
-            <div>
-              <h2 className="text-[11px] font-bold uppercase tracking-wider text-cyan-200">
-                Reservoir Hydrograph & Telemetry
-              </h2>
+      {/* NATIONAL OVERVIEW */}
 
-              <p className="text-[9px] text-slate-500">
-                24-hour water-level monitoring
-              </p>
-            </div>
-          </div>
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
 
-          <span className="text-[10px] font-semibold text-cyan-400">
-            {selectedDam?.name}
-          </span>
-        </div>
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
 
-        <div className="p-3">
-          <WaterLevelChart
-            data={hydroData}
-            dam={selectedDam}
+          <SectionTitle
+            icon={BarChart3}
+            title="National Hydrology Overview"
+            subtitle="24-hour reservoir telemetry and response readiness"
           />
-        </div>
-      </section>
-
-      {/* DAM FLEET STATUS */}
-      <section className="space-y-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-cyan-200">
-              National Dam Fleet
-            </h2>
-
-            <p className="mt-1 text-[10px] text-slate-500">
-              Reservoir health and operational monitoring
-            </p>
-          </div>
 
           <Link
-            to="/dam-monitoring"
-            className="flex items-center gap-1 text-[10px] font-semibold text-cyan-400 hover:text-cyan-200"
+            to="/analytics"
+            className="text-xs font-bold text-blue-600"
           >
-            View All Dams
-            <ChevronRight className="h-3 w-3" />
+            Open Analytics →
           </Link>
+
         </div>
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {DAMS_DATA.slice(0, 4).map((dam) => (
-            <DamHealthCard
-              key={dam.id}
-              dam={dam}
-            />
-          ))}
+        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+
+          <MiniStat
+            label="Water level trend"
+            value="+2.8 m"
+            positive
+          />
+
+          <MiniStat
+            label="Average storage"
+            value={`${avgStorage}%`}
+          />
+
+          <MiniStat
+            label="Critical bulletins"
+            value={criticalAlertsCount}
+            danger
+          />
+
+          <MiniStat
+            label="Network uptime"
+            value="99.8%"
+            positive
+          />
+
         </div>
+
       </section>
+
+    </div>
+  );
+}
+
+function HeroMetric({ label, value, change, progress }) {
+  return (
+    <div className="min-w-[120px] px-4 py-3">
+
+      <div className="text-[10px] uppercase tracking-wide text-slate-400">
+        {label}
+      </div>
+
+      <div className="mt-1 text-sm font-extrabold text-white">
+        {value}
+      </div>
+
+      {change && (
+        <div className="text-[10px] font-bold text-emerald-400">
+          ↑ {change}
+        </div>
+      )}
+
+      {progress != null && (
+        <div className="mt-1.5 h-1.5 w-20 overflow-hidden rounded-full bg-slate-700">
+          <div
+            className="h-full rounded-full bg-sky-400"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+function MetricCard({
+  icon: Icon,
+  title,
+  value,
+  subtitle,
+  danger,
+  warning,
+  progress,
+}) {
+  return (
+    <div
+      className={`rounded-xl border bg-white p-4 shadow-sm ${
+        danger
+          ? "border-red-200 bg-red-50/30"
+          : warning
+          ? "border-orange-200 bg-orange-50/20"
+          : "border-slate-200"
+      }`}
+    >
+
+      <div className="flex items-start justify-between">
+
+        <div
+          className={`rounded-xl p-3 ${
+            danger
+              ? "bg-red-100 text-red-600"
+              : warning
+              ? "bg-orange-100 text-orange-600"
+              : "bg-blue-50 text-blue-600"
+          }`}
+        >
+          <Icon className="h-6 w-6" />
+        </div>
+
+        <ChevronRight className="h-5 w-5 text-slate-300" />
+
+      </div>
+
+      <div className="mt-3 text-xs font-semibold text-slate-500">
+        {title}
+      </div>
+
+      <div className="mt-0.5 text-3xl font-black text-slate-900">
+        {value}
+      </div>
+
+      {progress != null && (
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="h-full rounded-full bg-blue-500"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
+
+      <div className="mt-2 text-[11px] text-slate-500">
+        {subtitle}
+      </div>
+
+    </div>
+  );
+}
+
+function WeatherPanel({ current }) {
+  if (!current) {
+    return (
+      <div className="h-52 animate-pulse rounded-xl border border-slate-200 bg-white" />
+    );
+  }
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+
+      <div className="flex items-center justify-between">
+
+        <SectionTitle
+          icon={CloudRain}
+          title="Catchment Weather"
+        />
+
+        <Link
+          to="/weather"
+          className="text-xs font-bold text-blue-600"
+        >
+          View Forecast →
+        </Link>
+
+      </div>
+
+      <div className="mt-3 rounded-lg bg-sky-50 p-3">
+
+        <div className="flex items-center justify-between">
+
+          <div>
+
+            <div className="text-3xl font-black text-slate-900">
+              {current.temperature ?? 24}°C
+            </div>
+
+            <div className="text-xs text-slate-500">
+              {current.location || "Sambalpur, Odisha"}
+            </div>
+
+            <div className="text-xs text-slate-500">
+              {current.condition || "Light Rain"}
+            </div>
+
+          </div>
+
+          <CloudRain className="h-12 w-12 text-blue-500" />
+
+        </div>
+
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+
+        <WeatherMetric
+          icon={Droplets}
+          label="24h Rainfall"
+          value={`${current.rainfall24h ?? 124.6} mm`}
+        />
+
+        <WeatherMetric
+          icon={ArrowUpRight}
+          label="Wind Speed"
+          value={`${current.windSpeed ?? 38} km/h`}
+        />
+
+        <WeatherMetric
+          icon={Droplets}
+          label="Humidity"
+          value={`${current.humidity ?? 92}%`}
+        />
+
+        <WeatherMetric
+          icon={Gauge}
+          label="Pressure"
+          value={`${current.pressure ?? 996} hPa`}
+        />
+
+      </div>
+
+    </section>
+  );
+}
+
+function WeatherMetric({ icon: Icon, label, value }) {
+  return (
+    <div className="border-t border-slate-100 pt-2">
+
+      <div className="flex items-center gap-1 text-[10px] text-slate-400">
+        <Icon className="h-3.5 w-3.5 text-blue-500" />
+        {label}
+      </div>
+
+      <div className="mt-1 font-extrabold text-slate-800">
+        {value}
+      </div>
+
+    </div>
+  );
+}
+
+function SectionTitle({ icon: Icon, title, subtitle }) {
+  return (
+    <div className="flex items-start gap-2">
+
+      <Icon className="mt-0.5 h-4 w-4 text-blue-600" />
+
+      <div>
+        <h2 className="text-sm font-extrabold text-slate-800">
+          {title}
+        </h2>
+
+        {subtitle && (
+          <p className="text-[10px] text-slate-400">
+            {subtitle}
+          </p>
+        )}
+      </div>
+
+    </div>
+  );
+}
+
+function InfoRow({ label, value, danger }) {
+  return (
+    <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 last:border-0 last:pb-0">
+
+      <span className="text-xs text-slate-500">
+        {label}
+      </span>
+
+      <span
+        className={`text-xs font-bold ${
+          danger ? "text-red-600" : "text-slate-800"
+        }`}
+      >
+        {value}
+      </span>
+
+    </div>
+  );
+}
+
+function QuickAction({ to, icon: Icon, label, danger }) {
+  return (
+    <Link
+      to={to}
+      className={`flex min-h-[72px] flex-col items-center justify-center rounded-lg border p-2 text-center transition ${
+        danger
+          ? "border-red-100 bg-red-50 text-red-600 hover:bg-red-100"
+          : "border-slate-100 bg-slate-50 text-blue-600 hover:bg-blue-50"
+      }`}
+    >
+
+      <Icon className="h-6 w-6" />
+
+      <span className="mt-1 text-[10px] font-bold text-slate-600">
+        {label}
+      </span>
+
+    </Link>
+  );
+}
+
+function Status({ label, value }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+
+      <span className="text-slate-500">
+        {label}
+      </span>
+
+      <span className="flex items-center gap-1 font-bold text-emerald-600">
+        <span className="h-2 w-2 rounded-full bg-emerald-500" />
+        {value}
+      </span>
+
+    </div>
+  );
+}
+
+function MiniStat({ label, value, positive, danger }) {
+  return (
+    <div className="rounded-lg bg-slate-50 p-3">
+
+      <div className="text-[10px] text-slate-500">
+        {label}
+      </div>
+
+      <div
+        className={`mt-1 text-lg font-black ${
+          danger
+            ? "text-red-600"
+            : positive
+            ? "text-emerald-600"
+            : "text-slate-900"
+        }`}
+      >
+        {value}
+      </div>
 
     </div>
   );

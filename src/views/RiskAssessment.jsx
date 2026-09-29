@@ -2,34 +2,43 @@ import React, { useState } from "react";
 import {
   AlertOctagon,
   Sparkles,
+  BrainCircuit,
   ShieldAlert,
   Activity,
   CheckCircle2,
-  TrendingUp,
-  FileText,
   AlertTriangle,
-  BrainCircuit,
 } from "lucide-react";
+
 import { DAMS_DATA } from "../data/damData";
 import { geminiService } from "../services/geminiService";
 import { getRiskColorClass } from "../utils/helpers";
 
 export function RiskAssessment() {
-  const [selectedDam, setSelectedDam] = useState(DAMS_DATA[1]); // Hirakud Dam
+  const [selectedDam, setSelectedDam] = useState(DAMS_DATA[1]);
   const [aiReport, setAiReport] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGenerateReport = async () => {
     setIsGenerating(true);
+
     try {
       const report = await geminiService.analyzeRisk(
         selectedDam,
-        { rainfall24h: 124.6, forecast: "Heavy Continuous Runoff" },
-        { terrain: "Steep river basin with low-lying urban delta" }
+        {
+          rainfall24h: 124.6,
+          forecast: "Heavy Continuous Runoff",
+        },
+        {
+          terrain: "Steep river basin with low-lying urban delta",
+        }
       );
+
       setAiReport(report);
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
+      setAiReport(
+        "Unable to generate the AI audit at this time. Please verify the Gemini API connection."
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -40,184 +49,488 @@ export function RiskAssessment() {
       name: "Storage vs Rule Curve",
       score: selectedDam.storagePercentage >= 90 ? 94 : 76,
       status: selectedDam.storagePercentage >= 90 ? "CRITICAL" : "HIGH",
-      desc: "Water level is within 0.35m of the emergency crest overtopping threshold.",
+      desc:
+        "Water level is within 0.35m of the emergency crest overtopping threshold.",
     },
     {
       name: "Catchment Inflow Rate",
       score: 88,
       status: "HIGH",
-      desc: "Monsoon runoff exceeding 4,800 cumecs continuously for 18 hours.",
+      desc:
+        "Monsoon runoff exceeding 4,800 cumecs continuously for 18 hours.",
     },
     {
       name: "Sluice Gate Aperture Capacity",
       score: 65,
       status: "MODERATE",
-      desc: "24 of 64 gates operational; maximum discharge regulated by downstream bridge clearance.",
+      desc:
+        "24 of 64 gates operational; maximum discharge regulated by downstream bridge clearance.",
     },
     {
       name: "Structural Piezometric Pore Pressure",
       score: 42,
       status: "NORMAL",
-      desc: "Sensors at chainage 4+200 indicate stable pore pressure at 0.38 MPa.",
+      desc:
+        "Sensors at chainage 4+200 indicate stable pore pressure at 0.38 MPa.",
     },
     {
       name: "Downstream Urban Vulnerability",
       score: 91,
       status: "CRITICAL",
-      desc: "Over 82,000 residents situated within the 4-hour flood arrival perimeter.",
+      desc:
+        "Over 82,000 residents situated within the 4-hour flood arrival perimeter.",
     },
   ];
 
+  const riskScore =
+    selectedDam.riskLevel === "CRITICAL"
+      ? "92.4"
+      : selectedDam.riskLevel === "HIGH"
+      ? "78.6"
+      : "38.2";
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
-        <div>
-          <div className="flex items-center gap-2">
-            <AlertOctagon className="w-5 h-5 text-red-400" />
-            <h1 className="text-xl font-black text-white font-sans">
-              Explainable AI Dam Risk &amp; Vulnerability Assessment
-            </h1>
-          </div>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Real-time multi-criteria risk scoring powered by Google Gemini 3.8 and CWC Dam Safety Guidelines.
-          </p>
-        </div>
+    <div className="space-y-6 text-slate-900">
 
-        {/* Dam Selector */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400 font-mono">Dam:</span>
-          <select
-            value={selectedDam.id}
-            onChange={(e) => {
-              const d = DAMS_DATA.find((item) => item.id === e.target.value);
-              if (d) {
-                setSelectedDam(d);
-                setAiReport("");
-              }
-            }}
-            className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-500"
-          >
-            {DAMS_DATA.map((dam) => (
-              <option key={dam.id} value={dam.id}>
-                {dam.name} - {dam.riskLevel}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+      {/* HEADER */}
+      <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
 
-      {/* Main Scorecard & AI Action */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="p-5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <span className="text-[10px] uppercase font-mono text-slate-400">
-                Composite Risk Rating
-              </span>
-              <h3 className="text-lg font-bold text-white mt-0.5">{selectedDam.name}</h3>
+          <div className="flex items-center gap-3">
+
+            <div className="w-10 h-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center">
+              <AlertOctagon className="w-5 h-5 text-red-600" />
             </div>
-            <span className={`px-2.5 py-1 rounded text-xs font-mono font-bold uppercase ${getRiskColorClass(selectedDam.riskLevel)}`}>
-              {selectedDam.riskLevel}
-            </span>
-          </div>
 
-          <div className="flex items-center justify-center p-6 bg-slate-950/60 rounded-xl border border-slate-800/80">
-            <div className="text-center">
-              <span className="text-4xl font-black text-red-400 font-mono">
-                {selectedDam.riskLevel === "CRITICAL" ? "92.4" : selectedDam.riskLevel === "HIGH" ? "78.6" : "38.2"}
-              </span>
-              <span className="text-xs text-slate-400 block font-mono mt-1">
-                Risk Score / 100
-              </span>
-              <p className="text-[11px] text-slate-400 mt-2 max-w-[200px]">
-                High inundation probability if inflow sustains for next 6 hours.
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold text-slate-900">
+                Explainable AI Dam Risk &amp; Vulnerability Assessment
+              </h1>
+
+              <p className="text-sm text-slate-500 mt-1">
+                Multi-criteria hydrological risk assessment and AI-assisted
+                decision support.
               </p>
             </div>
+
           </div>
+
+          {/* DAM SELECTOR */}
+          <div className="flex items-center gap-2">
+
+            <span className="text-xs font-semibold text-slate-600">
+              Dam:
+            </span>
+
+            <select
+              value={selectedDam.id}
+              onChange={(e) => {
+                const dam = DAMS_DATA.find(
+                  (item) => item.id === e.target.value
+                );
+
+                if (dam) {
+                  setSelectedDam(dam);
+                  setAiReport("");
+                }
+              }}
+              className="h-10 bg-white border border-slate-300 text-slate-800 text-sm rounded-lg px-3 focus:outline-none focus:border-blue-500"
+            >
+              {DAMS_DATA.map((dam) => (
+                <option key={dam.id} value={dam.id}>
+                  {dam.name} - {dam.riskLevel}
+                </option>
+              ))}
+            </select>
+
+          </div>
+        </div>
+      </section>
+
+
+      {/* TOP SECTION */}
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        {/* RISK SCORE */}
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
+
+          <div className="flex items-start justify-between">
+
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase">
+                Composite Risk Rating
+              </p>
+
+              <h2 className="text-lg font-bold text-slate-900 mt-1">
+                {selectedDam.name}
+              </h2>
+            </div>
+
+            <span
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                selectedDam.riskLevel === "CRITICAL"
+                  ? "bg-red-50 text-red-700 border border-red-200"
+                  : selectedDam.riskLevel === "HIGH"
+                  ? "bg-orange-50 text-orange-700 border border-orange-200"
+                  : "bg-green-50 text-green-700 border border-green-200"
+              }`}
+            >
+              {selectedDam.riskLevel}
+            </span>
+
+          </div>
+
+
+          <div className="mt-5 rounded-xl bg-slate-50 border border-slate-200 p-6 text-center">
+
+            <div className="text-5xl font-bold text-slate-900">
+              {riskScore}
+            </div>
+
+            <p className="text-xs text-slate-500 mt-2">
+              Risk Score / 100
+            </p>
+
+            <div className="mt-5 h-2 bg-slate-200 rounded-full overflow-hidden">
+
+              <div
+                className={`h-full rounded-full ${
+                  selectedDam.riskLevel === "CRITICAL"
+                    ? "bg-red-500"
+                    : selectedDam.riskLevel === "HIGH"
+                    ? "bg-orange-500"
+                    : "bg-green-500"
+                }`}
+                style={{
+                  width: `${riskScore}%`,
+                }}
+              />
+
+            </div>
+
+            <p className="text-xs text-slate-600 mt-4">
+              High inundation probability if inflow sustains
+              for the next 6 hours.
+            </p>
+
+          </div>
+
 
           <button
             onClick={handleGenerateReport}
             disabled={isGenerating}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-cyan-600 to-blue-700 hover:from-cyan-500 hover:to-blue-600 text-white font-bold text-xs rounded-lg shadow-lg shadow-cyan-950 transition-all"
+            className="
+              w-full
+              mt-4
+              flex
+              items-center
+              justify-center
+              gap-2
+              py-2.5
+              px-4
+              rounded-lg
+              bg-blue-600
+              hover:bg-blue-700
+              disabled:bg-blue-300
+              text-white
+              text-sm
+              font-semibold
+              transition
+            "
           >
-            <Sparkles className="w-4 h-4 text-cyan-300 animate-pulse" />
-            <span>{isGenerating ? "Synthesizing AI Audit..." : "Generate AI Hydrological Audit"}</span>
+            <Sparkles className="w-4 h-4" />
+
+            {isGenerating
+              ? "Generating AI Audit..."
+              : "Generate AI Hydrological Audit"}
           </button>
+
         </div>
 
-        {/* AI Explanation Output (2 cols) */}
-        <div className="lg:col-span-2 p-5 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
-              <div className="flex items-center gap-2">
-                <BrainCircuit className="w-4 h-4 text-cyan-400" />
-                <h3 className="text-xs font-bold text-slate-100 uppercase font-mono tracking-wider">
+
+        {/* AI REPORT */}
+        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl shadow-sm p-5 flex flex-col">
+
+          <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+
+            <div className="flex items-center gap-2">
+
+              <BrainCircuit className="w-5 h-5 text-blue-600" />
+
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">
                   Explainable AI Diagnostics &amp; Decision Support
-                </h3>
+                </h2>
+
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Hydrological analysis generated from current dam conditions.
+                </p>
               </div>
-              <span className="text-[10px] font-mono text-cyan-400 px-2 py-0.5 rounded bg-cyan-950 border border-cyan-800">
-                Gemini 3.8 Active
-              </span>
+
             </div>
 
+            <span className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-xs font-semibold">
+              AI Analysis
+            </span>
+
+          </div>
+
+
+          <div className="flex-1 mt-4">
+
             {aiReport ? (
-              <div className="space-y-3 text-xs text-slate-300 whitespace-pre-wrap leading-relaxed">
+              <div className="
+                bg-slate-50
+                border
+                border-slate-200
+                rounded-lg
+                p-4
+                text-sm
+                text-slate-700
+                whitespace-pre-wrap
+                leading-relaxed
+                max-h-80
+                overflow-y-auto
+              ">
                 {aiReport}
               </div>
             ) : (
-              <div className="py-12 text-center text-slate-500 space-y-2">
-                <BrainCircuit className="w-10 h-10 text-slate-700 mx-auto animate-pulse" />
-                <p className="text-xs">
-                  Click <b>"Generate AI Hydrological Audit"</b> to execute real-time hydrological analysis on {selectedDam.name}.
+              <div className="
+                min-h-64
+                flex
+                flex-col
+                items-center
+                justify-center
+                text-center
+                bg-slate-50
+                border
+                border-dashed
+                border-slate-300
+                rounded-lg
+                p-6
+              ">
+
+                <BrainCircuit className="w-10 h-10 text-slate-300 mb-3" />
+
+                <h3 className="text-sm font-semibold text-slate-700">
+                  AI diagnostic report not generated
+                </h3>
+
+                <p className="text-xs text-slate-500 mt-2 max-w-md">
+                  Click "Generate AI Hydrological Audit" to analyze
+                  {` ${selectedDam.name}`} using the configured AI service.
                 </p>
+
               </div>
             )}
+
           </div>
 
-          <div className="pt-3 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between mt-4">
-            <span>Standard: CWC Dam Safety Act 2021 Guidelines</span>
-            <span className="text-cyan-400 font-mono">Confidence: 96.2%</span>
+
+          <div className="pt-3 mt-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+
+            <span>
+              Assessment standard: CWC Dam Safety Guidelines
+            </span>
+
+            <span className="font-semibold text-blue-600">
+              Confidence: 96.2%
+            </span>
+
           </div>
+
         </div>
-      </div>
 
-      {/* Breakdown Factors */}
-      <div className="p-5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-4">
-        <h3 className="text-xs font-bold text-slate-100 uppercase font-mono tracking-wider">
-          Multi-Parameter Risk Factor Breakdown
-        </h3>
+      </section>
+
+
+      {/* RISK FACTORS */}
+      <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
+
+        <div className="flex items-center gap-2 mb-5">
+
+          <Activity className="w-5 h-5 text-blue-600" />
+
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">
+              Multi-Parameter Risk Factor Breakdown
+            </h2>
+
+            <p className="text-xs text-slate-500 mt-1">
+              Current contribution of major hydrological and vulnerability
+              indicators.
+            </p>
+          </div>
+
+        </div>
+
 
         <div className="space-y-3">
-          {riskFactors.map((factor, idx) => (
-            <div key={idx} className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 text-xs">
-              <div className="flex items-center justify-between mb-1.5 font-mono">
-                <span className="font-bold text-slate-200">{factor.name}</span>
+
+          {riskFactors.map((factor, index) => (
+
+            <div
+              key={index}
+              className="
+                rounded-lg
+                border
+                border-slate-200
+                bg-white
+                p-4
+                hover:bg-slate-50
+                transition
+              "
+            >
+
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+
+                <div className="flex items-center gap-3">
+
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      factor.status === "CRITICAL"
+                        ? "bg-red-50"
+                        : factor.status === "HIGH"
+                        ? "bg-orange-50"
+                        : factor.status === "MODERATE"
+                        ? "bg-amber-50"
+                        : "bg-green-50"
+                    }`}
+                  >
+
+                    {factor.status === "CRITICAL" ? (
+                      <ShieldAlert className="w-4 h-4 text-red-600" />
+                    ) : factor.status === "HIGH" ? (
+                      <AlertTriangle className="w-4 h-4 text-orange-600" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    )}
+
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      {factor.name}
+                    </h3>
+
+                    <p className="text-xs text-slate-500 mt-1">
+                      {factor.desc}
+                    </p>
+                  </div>
+
+                </div>
+
+
                 <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                  className={`self-start md:self-center px-2.5 py-1 rounded-full text-xs font-semibold ${
                     factor.status === "CRITICAL"
-                      ? "text-red-400 bg-red-950/50 border border-red-800"
+                      ? "bg-red-50 text-red-700 border border-red-200"
                       : factor.status === "HIGH"
-                      ? "text-orange-400 bg-orange-950/50 border border-orange-800"
-                      : "text-slate-300 bg-slate-800"
+                      ? "bg-orange-50 text-orange-700 border border-orange-200"
+                      : factor.status === "MODERATE"
+                      ? "bg-amber-50 text-amber-700 border border-amber-200"
+                      : "bg-green-50 text-green-700 border border-green-200"
                   }`}
                 >
-                  {factor.score} / 100 ({factor.status})
+                  {factor.score} / 100 · {factor.status}
                 </span>
+
               </div>
-              <p className="text-slate-400 text-[11px] mb-2">{factor.desc}</p>
-              <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+
+
+              <div className="mt-3 h-2 bg-slate-100 rounded-full overflow-hidden">
+
                 <div
                   className={`h-full rounded-full ${
-                    factor.score >= 80 ? "bg-red-500" : factor.score >= 60 ? "bg-amber-500" : "bg-cyan-500"
+                    factor.score >= 80
+                      ? "bg-red-500"
+                      : factor.score >= 60
+                      ? "bg-orange-500"
+                      : "bg-green-500"
                   }`}
-                  style={{ width: `${factor.score}%` }}
+                  style={{
+                    width: `${factor.score}%`,
+                  }}
                 />
+
               </div>
+
             </div>
+
           ))}
+
         </div>
-      </div>
+
+      </section>
+
+
+      {/* OPERATIONAL SUMMARY */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-red-600" />
+
+            <span className="text-xs font-semibold text-slate-600">
+              Current Risk Level
+            </span>
+          </div>
+
+          <p className="text-lg font-bold text-slate-900 mt-2">
+            {selectedDam.riskLevel}
+          </p>
+
+          <p className="text-xs text-slate-500 mt-1">
+            Based on current reservoir and downstream conditions.
+          </p>
+
+        </div>
+
+
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+
+          <div className="flex items-center gap-2">
+            <Activity className="w-4 h-4 text-blue-600" />
+
+            <span className="text-xs font-semibold text-slate-600">
+              Storage Level
+            </span>
+          </div>
+
+          <p className="text-lg font-bold text-slate-900 mt-2">
+            {selectedDam.storagePercentage}%
+          </p>
+
+          <p className="text-xs text-slate-500 mt-1">
+            Current reservoir storage utilization.
+          </p>
+
+        </div>
+
+
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-green-600" />
+
+            <span className="text-xs font-semibold text-slate-600">
+              Assessment Status
+            </span>
+          </div>
+
+          <p className="text-lg font-bold text-slate-900 mt-2">
+            Monitoring Active
+          </p>
+
+          <p className="text-xs text-slate-500 mt-1">
+            Risk indicators are available for operational review.
+          </p>
+
+        </div>
+
+      </section>
+
     </div>
   );
 }

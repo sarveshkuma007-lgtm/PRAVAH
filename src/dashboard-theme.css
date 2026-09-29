@@ -1,0 +1,364 @@
+/* =========================================================
+   PRAVAH PROFESSIONAL GOVERNMENT DASHBOARD THEME
+   Applies only when .pravah-dashboard-mode is active
+   ========================================================= */
+
+
+/* =========================
+   MAIN DASHBOARD
+   ========================= */
+
+.pravah-dashboard-mode {
+  background: #f5f7fa !important;
+  color: #172033 !important;
+  min-height: 100vh;
+}
+
+
+/* =========================
+   TOP NAVBAR
+   ========================= */
+
+.pravah-dashboard-mode header {
+  background: #ffffff !important;
+  color: #172033 !important;
+  border-bottom: 1px solid #dfe5ec !important;
+  backdrop-filter: none !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+
+/* PRAVAH logo text */
+
+.pravah-dashboard-mode header a {
+  color: #172033;
+}
+
+
+/* Navbar search */
+
+.pravah-dashboard-mode header input {
+  background: #f8fafc !important;
+  color: #172033 !important;
+  border: 1px solid #d7dee7 !important;
+  box-shadow: none !important;
+}
+
+.pravah-dashboard-mode header input::placeholder {
+  color: #94a3b8 !important;
+}
+
+.pravah-dashboard-mode header input:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.08) !important;
+}
+
+
+/* Navbar buttons */
+
+.pravah-dashboard-mode header button {
+  box-shadow: none !important;
+}
+
+.pravah-dashboard-mode header button:hover {
+  box-shadow: none !important;
+}
+
+
+/* =========================
+   SIDEBAR
+   ========================= */
+
+.pravah-dashboard-mode aside {
+  background: #ffffff !important;
+  color: #334155 !important;
+  border-right: 1px solid #dfe5ec !important;
+  box-shadow: 2px 0 6px rgba(15, 23, 42, 0.03);
+}
+
+
+/* Sidebar top information */
+
+.pravah-dashboard-mode aside .bg-slate-950\/40 {
+  background: #f8fafc !important;
+}
+
+
+/* Sidebar bottom */
+
+.pravah-dashboard-mode aside .bg-slate-950\/60 {
+  background: #ffffff !important;
+}
+
+
+/* Sidebar separators */
+
+.pravah-dashboard-mode aside .border-b,
+.pravah-dashboard-mode aside .border-t {
+  border-color: #e2e8f0 !important;
+}
+
+
+/* Sidebar normal links */
+
+.pravah-dashboard-mode aside a {
+  color: #475569;
+  border-color: transparent;
+  box-shadow: none !important;
+}
+
+
+/* Sidebar hover */
+
+.pravah-dashboard-mode aside a:hover {
+  color: #1d4ed8 !important;
+  background: #eff6ff !important;
+  border-color: #dbeafe !important;
+}
+
+
+/* Active sidebar item */
+
+.pravah-dashboard-mode aside a[aria-current="page"] {
+  background: #eaf3ff !important;
+  color: #1769d2 !important;
+  border: 1px solid #bfdbfe !important;
+  box-shadow: none !important;
+}
+
+
+/* Sidebar AI badge */
+
+.pravah-dashboard-mode aside a span {
+  text-shadow: none !important;
+}
+
+
+/* =========================
+   MAIN CONTENT AREA
+   ========================= */
+
+.pravah-dashboard-mode main {
+  background: #f5f7fa !important;
+}
+
+
+/* =========================
+   DASHBOARD CARDS
+   ========================= */
+
+.pravah-dashboard {
+  color: #172033;
+}
+
+
+/* Remove excessive AI/glow feeling */
+
+.pravah-dashboard .shadow-2xl,
+.pravah-dashboard .shadow-xl,
+.pravah-dashboard .shadow-lg {
+  box-shadow:
+    0 2px 8px rgba(15, 23, 42, 0.06) !important;
+}
+
+
+/* Normal cards */
+
+.pravah-dashboard
+.bg-white {
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+
+/* Card hover */
+
+.pravah-dashboard
+.bg-white:hover {
+  box-shadow:
+    0 3px 10px rgba(15, 23, 42, 0.07);
+}
+
+
+/* =========================
+   TYPOGRAPHY
+   ========================= */
+
+.pravah-dashboard h1,
+.pravah-dashboard h2,
+.pravah-dashboard h3 {
+  letter-spacing: -0.01em;
+}
+
+
+/* =========================
+   KPI CARDS
+   ========================= */
+
+.pravah-dashboard
+.text-3xl {
+  letter-spacing: -0.025em;
+}
+
+
+/* =========================
+   PROFESSIONAL STATUS COLORS
+   ========================= */
+
+.pravah-dashboard .text-emerald-600 {
+  color: #15803d !important;
+}
+
+.pravah-dashboard .text-red-600 {
+  color: #dc2626 !important;
+}
+
+.pravah-dashboard .text-orange-600 {
+  color: #ea580c !important;
+}
+
+.pravah-dashboard .text-blue-600 {
+  color: #2563eb !important;
+}
+
+
+/* =========================
+   MAP AREA
+   ========================= */
+
+.pravah-dashboard
+.leaflet-container {
+  border-radius: 8px;
+}
+
+
+/* =========================
+   BUTTONS
+   ========================= */
+
+.pravah-dashboard
+.bg-blue-600 {
+  background-color: #2563eb !important;
+}
+
+.pravah-dashboard
+.bg-blue-600:hover {
+  background-color: #1d4ed8 !important;
+}
+
+
+/* =========================
+   ALERT COLORS
+   ========================= */
+
+.pravah-dashboard
+.bg-red-50 {
+  background-color: #fef2f2 !important;
+}
+
+.pravah-dashboard
+.bg-red-100 {
+  background-color: #fee2e2 !important;
+}
+
+.pravah-dashboard
+.bg-orange-50 {
+  background-color: #fff7ed !important;
+}
+
+.pravah-dashboard
+.bg-orange-100 {
+  background-color: #ffedd5 !important;
+}
+
+.pravah-dashboard
+.bg-amber-100 {
+  background-color: #fef3c7 !important;
+}
+
+
+/* =========================
+   HERO SECTION
+   ========================= */
+
+.pravah-dashboard
+.bg-\[\#123b5b\] {
+  box-shadow:
+    0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
+
+/* =========================
+   REMOVE NEON EFFECTS
+   ========================= */
+
+.pravah-dashboard
+.animate-pulse {
+  animation-duration: 2.5s;
+}
+
+
+/* =========================
+   QUICK ACTIONS
+   ========================= */
+
+.pravah-dashboard a {
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+
+/* =========================
+   SELECT / FORM ELEMENTS
+   ========================= */
+
+.pravah-dashboard select {
+  color: #172033 !important;
+  background-color: #ffffff !important;
+  border-color: #d7dee7 !important;
+}
+
+.pravah-dashboard select:focus {
+  outline: none;
+  border-color: #2563eb !important;
+  box-shadow:
+    0 0 0 2px rgba(37, 99, 235, 0.08);
+}
+
+
+/* =========================
+   MOBILE
+   ========================= */
+
+@media (max-width: 1023px) {
+
+  .pravah-dashboard-mode main {
+    padding: 1rem !important;
+  }
+
+  .pravah-dashboard {
+    margin: -1rem !important;
+    padding: 1rem !important;
+  }
+
+}
+
+
+/* =========================
+   SMALL MOBILE
+   ========================= */
+
+@media (max-width: 640px) {
+
+  .pravah-dashboard {
+    padding: 0.75rem !important;
+  }
+
+  .pravah-dashboard h1 {
+    font-size: 2rem;
+  }
+
+}

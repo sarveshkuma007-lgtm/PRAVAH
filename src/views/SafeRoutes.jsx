@@ -1,5 +1,14 @@
 import React from "react";
-import { Route, Navigation, ShieldCheck, AlertTriangle, ArrowRight, Volume2 } from "lucide-react";
+import {
+  Route,
+  Navigation,
+  ShieldCheck,
+  AlertTriangle,
+  ArrowRight,
+  Volume2,
+  MapPin,
+  Clock,
+} from "lucide-react";
 import { LiveLocationMap } from "../components/LiveLocationMap";
 import { useLocation } from "../hooks/useLocation";
 import { speakAlert } from "../utils/emergencyUtils";
@@ -9,108 +18,317 @@ export function SafeRoutes() {
 
   const handleReadDirections = () => {
     speakAlert(
-      `Evacuation guidance from your location to ${nearestShelter?.name || "the nearest shelter"}: Head East onto High Canal Road away from the river bank. Follow the green emergency signs for 1.8 kilometers toward the high ground elevation. Do not attempt to cross submerged culverts.`
+      `Evacuation guidance from your location to ${
+        nearestShelter?.name || "the nearest shelter"
+      }: Head East onto High Canal Road away from the river bank. Follow the green emergency signs for 1.8 kilometers toward the high ground elevation. Do not attempt to cross submerged culverts.`
     );
   };
 
+  const routeSteps = [
+    {
+      step: "1",
+      text: "Depart your current location and proceed Eastward away from the Mahanadi riverside embankment.",
+      dist: "300 meters",
+    },
+    {
+      step: "2",
+      text: "Turn LEFT onto High Ridge Canal Bypass Road (NH-53 elevated viaduct). Do NOT use underpasses.",
+      dist: "800 meters",
+    },
+    {
+      step: "3",
+      text: "Follow the green emergency guidance signboards past the civil hospital.",
+      dist: "500 meters",
+    },
+    {
+      step: "4",
+      text: `Arrive at ${
+        nearestShelter?.name || "the designated relief shelter"
+      } and check in with the district relief desk.`,
+      dist: "200 meters",
+    },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 text-slate-900">
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
-        <div>
-          <div className="flex items-center gap-2">
-            <Route className="w-5 h-5 text-emerald-400" />
-            <h1 className="text-xl font-black text-white font-sans">
-              High-Ground Evacuation Corridors &amp; Hazard Routing
-            </h1>
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+
+          <div className="flex items-start gap-3">
+
+            <div className="p-2.5 bg-green-50 rounded-lg">
+              <Route className="w-5 h-5 text-green-600" />
+            </div>
+
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">
+                Safe Evacuation Routes
+              </h1>
+
+              <p className="text-sm text-slate-500 mt-1">
+                High-ground navigation and flood-safe evacuation corridors.
+              </p>
+            </div>
+
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Real-time safe navigation routes designed to steer vehicles and pedestrians away from flash-flood river corridors.
+
+          <button
+            onClick={handleReadDirections}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow-sm"
+          >
+            <Volume2 className="w-4 h-4" />
+            Voice Route Instructions
+          </button>
+
+        </div>
+
+      </div>
+
+      {/* Status Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <MapPin className="w-5 h-5 text-blue-600 mb-2" />
+
+          <p className="text-xs text-slate-500">
+            Current Location
+          </p>
+
+          <p className="text-sm font-semibold text-slate-900 mt-1">
+            {location ? "Location detected" : "Detecting location..."}
           </p>
         </div>
 
-        <button
-          onClick={handleReadDirections}
-          className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition-colors"
-        >
-          <Volume2 className="w-4 h-4 text-cyan-400" />
-          <span>Voice Route Instructions</span>
-        </button>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <ShieldCheck className="w-5 h-5 text-green-600 mb-2" />
+
+          <p className="text-xs text-slate-500">
+            Route Status
+          </p>
+
+          <p className="text-sm font-semibold text-green-700 mt-1">
+            Flood Resilient
+          </p>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <Navigation className="w-5 h-5 text-blue-600 mb-2" />
+
+          <p className="text-xs text-slate-500">
+            Destination
+          </p>
+
+          <p className="text-sm font-semibold text-slate-900 mt-1 truncate">
+            {nearestShelter?.name || "Relief Shelter"}
+          </p>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <Clock className="w-5 h-5 text-orange-600 mb-2" />
+
+          <p className="text-xs text-slate-500">
+            Route Elevation
+          </p>
+
+          <p className="text-sm font-semibold text-orange-700 mt-1">
+            +45m High Ground
+          </p>
+        </div>
+
       </div>
 
-      {/* Live Map of Route */}
-      <LiveLocationMap height="450px" />
+      {/* Live Map */}
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
 
-      {/* Turn by Turn Directions & Hazard warnings */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 p-5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-            <h3 className="text-xs font-bold text-slate-100 uppercase font-mono tracking-wider">
-              Primary Safe Highland Route to {nearestShelter?.name || "Relief Shelter"}
-            </h3>
-            <span className="text-xs text-emerald-400 font-mono font-bold">
-              Elevation: +45m (Flood Resilient)
-            </span>
+        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">
+              Live Evacuation Map
+            </h2>
+
+            <p className="text-xs text-slate-500 mt-1">
+              Current location, safe corridors and nearby shelter guidance.
+            </p>
           </div>
 
-          <div className="space-y-3 text-xs">
-            {[
-              {
-                step: "1",
-                text: "Depart your current location and proceed Eastward away from the Mahanadi riverside embankment.",
-                dist: "300 meters",
-              },
-              {
-                step: "2",
-                text: "Turn LEFT onto High Ridge Canal Bypass Road (NH-53 elevated viaduct). Do NOT use underpasses.",
-                dist: "800 meters",
-              },
-              {
-                step: "3",
-                text: "Follow the green fluorescent NDRF disaster guidance signboards past the civil hospital.",
-                dist: "500 meters",
-              },
-              {
-                step: "4",
-                text: "Arrive at Sambalpur High School Shelter main entrance. Check in with the district relief desk.",
-                dist: "200 meters",
-              },
-            ].map((s) => (
-              <div key={s.step} className="flex items-start gap-3 p-3 rounded-lg bg-slate-950/60 border border-slate-800">
-                <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
-                  {s.step}
-                </span>
-                <div className="flex-1">
-                  <p className="text-slate-200">{s.text}</p>
-                  <span className="text-[10px] text-slate-500 font-mono">{s.dist}</span>
+          <span className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold rounded-full">
+            <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+            Route Active
+          </span>
+
+        </div>
+
+        <div className="p-3">
+          <LiveLocationMap height="450px" />
+        </div>
+
+      </div>
+
+      {/* Route + Hazards */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        {/* Turn by Turn */}
+        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl shadow-sm">
+
+          <div className="p-5 border-b border-slate-200">
+
+            <div className="flex items-center justify-between gap-3">
+
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">
+                  Primary Safe Route
+                </h2>
+
+                <p className="text-xs text-slate-500 mt-1">
+                  Destination:{" "}
+                  <span className="font-medium text-slate-700">
+                    {nearestShelter?.name || "Relief Shelter"}
+                  </span>
+                </p>
+              </div>
+
+              <span className="px-2.5 py-1 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold rounded-full whitespace-nowrap">
+                +45m Elevation
+              </span>
+
+            </div>
+
+          </div>
+
+          <div className="p-5 space-y-3">
+
+            {routeSteps.map((step) => (
+              <div
+                key={step.step}
+                className="flex items-start gap-3 p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+
+                <div className="w-7 h-7 rounded-full bg-blue-50 border border-blue-200 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
+                  {step.step}
                 </div>
+
+                <div className="flex-1">
+
+                  <p className="text-sm text-slate-700 leading-5">
+                    {step.text}
+                  </p>
+
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <Navigation className="w-3.5 h-3.5 text-slate-400" />
+
+                    <span className="text-xs text-slate-500">
+                      {step.dist}
+                    </span>
+                  </div>
+
+                </div>
+
+                <ArrowRight className="w-4 h-4 text-slate-300 mt-1 shrink-0" />
+
               </div>
             ))}
+
           </div>
+
         </div>
 
-        {/* Hazard Alert / Blocked Roads */}
-        <div className="p-5 rounded-xl bg-slate-900/80 border border-red-500/30 bg-red-950/10 space-y-3">
-          <div className="flex items-center gap-2 text-red-400 font-bold text-xs uppercase font-mono">
-            <AlertTriangle className="w-4 h-4" />
-            <span>Hazard Alert: Blocked Corridors</span>
+        {/* Hazard Panel */}
+        <div className="bg-white border border-red-200 rounded-xl shadow-sm">
+
+          <div className="p-5 border-b border-red-100">
+
+            <div className="flex items-center gap-2">
+
+              <div className="p-2 bg-red-50 rounded-lg">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">
+                  Hazard Alerts
+                </h2>
+
+                <p className="text-xs text-slate-500 mt-1">
+                  Blocked or unsafe corridors
+                </p>
+              </div>
+
+            </div>
+
           </div>
-          <p className="text-xs text-slate-300 leading-relaxed">
-            The following roads are strictly closed due to active flood spillway discharge:
+
+          <div className="p-5 space-y-3">
+
+            <div className="p-3.5 bg-red-50 border border-red-200 rounded-lg">
+
+              <p className="text-sm font-semibold text-red-800">
+                Old Mahanadi Bridge Causeway
+              </p>
+
+              <p className="text-xs text-red-700 mt-1.5 leading-5">
+                Submerged under approximately 1.4m of turbulent water.
+                Avoid the crossing.
+              </p>
+
+              <span className="inline-block mt-2 px-2 py-1 bg-red-100 text-red-700 text-[10px] font-semibold rounded">
+                CLOSED
+              </span>
+
+            </div>
+
+            <div className="p-3.5 bg-red-50 border border-red-200 rounded-lg">
+
+              <p className="text-sm font-semibold text-red-800">
+                Ring Road Railway Underpass
+              </p>
+
+              <p className="text-xs text-red-700 mt-1.5 leading-5">
+                Waterlogged to approximately 2.2m depth. Do not enter
+                the underpass.
+              </p>
+
+              <span className="inline-block mt-2 px-2 py-1 bg-red-100 text-red-700 text-[10px] font-semibold rounded">
+                CLOSED
+              </span>
+
+            </div>
+
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-xs text-amber-800">
+                Follow official evacuation signage and do not attempt to
+                cross submerged roads or culverts.
+              </p>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* Safety Notice */}
+      <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+
+        <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0" />
+
+        <div>
+          <p className="text-sm font-semibold text-blue-800">
+            Evacuation Safety Guidance
           </p>
 
-          <ul className="text-xs space-y-2 text-slate-300">
-            <li className="p-2.5 rounded bg-slate-950 border border-red-900/50 text-red-200">
-              <strong className="block text-red-400">Old Mahanadi Bridge Causeway:</strong>
-              Submerged under 1.4m of turbulent water. Barricaded by traffic police.
-            </li>
-            <li className="p-2.5 rounded bg-slate-950 border border-red-900/50 text-red-200">
-              <strong className="block text-red-400">Ring Road Railway Underpass:</strong>
-              Waterlogged to 2.2m depth. Avoid entirely.
-            </li>
-          </ul>
+          <p className="text-xs text-blue-700 mt-1 leading-5">
+            Stay on designated high-ground routes, follow emergency
+            personnel instructions and avoid floodwater whenever possible.
+            Route conditions may change during an active flood event.
+          </p>
         </div>
+
       </div>
+
     </div>
   );
 }

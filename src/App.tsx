@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   BrowserRouter,
@@ -19,6 +18,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { EmergencyBanner } from "./components/EmergencyBanner";
 import { Navbar } from "./components/Navbar";
 import { Sidebar } from "./components/Sidebar";
+import { FloatingAIButton } from "./components/FloatingAIButton";
 import { AIChatbot } from "./components/AIChatbot";
 import { VoiceAssistant } from "./components/VoiceAssistant";
 
@@ -55,33 +55,22 @@ function AppLayout() {
     <div
       className={
         isLoginPage
-          ? "min-h-screen bg-slate-950 text-slate-100 font-sans"
-          : "min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950"
+          ? "min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans"
+          : "min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-blue-500 selection:text-white transition-colors duration-200"
       }
     >
-      {/* =====================================================
-          COMMAND CENTER HEADER
-          Emergency Banner + Navbar
-      ====================================================== */}
+      {/* Emergency Banner */}
+      {!isLoginPage && <EmergencyBanner />}
 
+      {/* Navbar */}
       {!isLoginPage && (
-        <div className="sticky top-0 z-[100] w-full">
-          {/* Emergency Warning Banner */}
-          <EmergencyBanner />
-
-          {/* Main Navigation */}
-          <Navbar
-            onToggleSidebar={() =>
-              setSidebarOpen((prev) => !prev)
-            }
-            onOpenAI={() => setAiChatOpen(true)}
-          />
-        </div>
+        <Navbar
+          onToggleSidebar={() =>
+            setSidebarOpen((prev) => !prev)
+          }
+          onOpenAI={() => setAiChatOpen(true)}
+        />
       )}
-
-      {/* =====================================================
-          APPLICATION BODY
-      ====================================================== */}
 
       <div
         className={
@@ -103,7 +92,7 @@ function AppLayout() {
           className={
             isLoginPage
               ? "w-full min-h-screen"
-              : "flex-1 transition-all duration-200 p-4 sm:p-6 md:p-8 lg:ml-64"
+              : "flex-1 min-w-0 transition-all duration-200 p-4 sm:p-6 md:p-8 lg:ml-64"
           }
         >
           <div
@@ -286,7 +275,7 @@ function AppLayout() {
                 }
               />
 
-              {/* ================= DEFAULT ROUTES ================= */}
+              {/* ================= DEFAULT ================= */}
 
               <Route
                 path="/"
@@ -312,16 +301,22 @@ function AppLayout() {
         </main>
       </div>
 
-      {/* =====================================================
-          GLOBAL AI FEATURES
-          Chatbot opens only from the compact Navbar icon
-      ====================================================== */}
+      {/* ================= GLOBAL AI FEATURES ================= */}
 
       {!isLoginPage && (
         <>
+          <FloatingAIButton
+            isOpen={aiChatOpen}
+            onClick={() =>
+              setAiChatOpen((prev) => !prev)
+            }
+          />
+
           <AIChatbot
             isOpen={aiChatOpen}
-            onClose={() => setAiChatOpen(false)}
+            onClose={() =>
+              setAiChatOpen(false)
+            }
           />
 
           <VoiceAssistant />
