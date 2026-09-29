@@ -1,1 +1,388 @@
 @import "tailwindcss";
+
+/* =========================================================
+   PRAVAH GLOBAL THEME
+   ========================================================= */
+
+html {
+  color-scheme: light;
+}
+
+html.dark-theme-mode {
+  color-scheme: dark;
+}
+
+html.light-theme-mode {
+  color-scheme: light;
+}
+
+/* =========================================================
+   BASE
+   ========================================================= */
+
+body {
+  margin: 0;
+  min-width: 320px;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  background: #f8fafc;
+  color: #0f172a;
+
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
+}
+
+html.dark-theme-mode body {
+  background: #020617;
+  color: #e2e8f0;
+}
+
+/* =========================================================
+   DARK THEME - MAIN SURFACES
+   ========================================================= */
+
+html.dark-theme-mode .bg-white {
+  background-color: #0f172a !important;
+}
+
+html.dark-theme-mode .bg-slate-50 {
+  background-color: #111827 !important;
+}
+
+html.dark-theme-mode .bg-slate-100 {
+  background-color: #1e293b !important;
+}
+
+html.dark-theme-mode .bg-slate-200 {
+  background-color: #334155 !important;
+}
+
+/* =========================================================
+   DARK THEME - TEXT
+   ========================================================= */
+
+html.dark-theme-mode .text-slate-900 {
+  color: #f8fafc !important;
+}
+
+html.dark-theme-mode .text-slate-800 {
+  color: #f1f5f9 !important;
+}
+
+html.dark-theme-mode .text-slate-700 {
+  color: #e2e8f0 !important;
+}
+
+html.dark-theme-mode .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+html.dark-theme-mode .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+html.dark-theme-mode .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+/* =========================================================
+   DARK THEME - BORDERS
+   ========================================================= */
+
+html.dark-theme-mode .border-slate-200 {
+  border-color: #334155 !important;
+}
+
+html.dark-theme-mode .border-slate-300 {
+  border-color: #475569 !important;
+}
+
+/* =========================================================
+   DARK THEME - SHADOWS
+   ========================================================= */
+
+html.dark-theme-mode .shadow-sm,
+html.dark-theme-mode .shadow-md,
+html.dark-theme-mode .shadow-lg,
+html.dark-theme-mode .shadow-xl,
+html.dark-theme-mode .shadow-2xl {
+  --tw-shadow-color: rgb(0 0 0 / 0.35);
+}
+
+/* =========================================================
+   DARK THEME - INPUTS
+   ========================================================= */
+
+html.dark-theme-mode input,
+html.dark-theme-mode textarea,
+html.dark-theme-mode select {
+  color-scheme: dark;
+}
+
+html.dark-theme-mode input.bg-slate-50,
+html.dark-theme-mode textarea.bg-slate-50,
+html.dark-theme-mode select.bg-slate-50 {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+
+html.dark-theme-mode input::placeholder,
+html.dark-theme-mode textarea::placeholder {
+  color: #64748b;
+}
+
+/* =========================================================
+   DARK THEME - HOVER STATES
+   ========================================================= */
+
+html.dark-theme-mode .hover\:bg-slate-50:hover {
+  background-color: #1e293b !important;
+}
+
+html.dark-theme-mode .hover\:bg-slate-100:hover {
+  background-color: #1e293b !important;
+}
+
+html.dark-theme-mode .hover\:bg-white:hover {
+  background-color: #1e293b !important;
+}
+
+html.dark-theme-mode .hover\:border-slate-300:hover {
+  border-color: #475569 !important;
+}
+
+/* =========================================================
+   ACCESSIBILITY - HIGH CONTRAST
+   ========================================================= */
+
+html.high-contrast-mode {
+  filter: contrast(1.08);
+}
+
+/*
+  Do not apply a dark text override here.
+  This allows the selected Light/Dark theme
+  to remain visible correctly.
+*/
+
+/* =========================================================
+   ACCESSIBILITY - LARGE TEXT
+   ========================================================= */
+
+html.large-text-mode {
+  font-size: 106%;
+}
+
+html.large-text-mode button,
+html.large-text-mode input,
+html.large-text-mode select,
+html.large-text-mode textarea {
+  font-size: 1em;
+}
+
+/* =========================================================
+   CHATBOT TYPOGRAPHY PROTECTION
+   ========================================================= */
+
+html.large-text-mode .pravah-ai-chatbot {
+  font-size: 100%;
+}
+
+html.large-text-mode .pravah-ai-chatbot input,
+html.large-text-mode .pravah-ai-chatbot button {
+  font-size: 100%;
+}
+
+/* =========================================================
+   SCROLLBAR - LIGHT
+   ========================================================= */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* =========================================================
+   SCROLLBAR - DARK
+   ========================================================= */
+
+html.dark-theme-mode ::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+html.dark-theme-mode ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+html.dark-theme-mode ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* =========================================================
+   THEME TRANSITIONS
+   ========================================================= */
+
+body,
+header,
+main,
+aside,
+section,
+article,
+nav,
+button,
+input,
+textarea,
+select {
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+/* =========================================================
+   VIDEO BANNER
+   ========================================================= */
+
+.pravah-video-banner {
+  position: relative;
+  overflow: hidden;
+}
+
+.pravah-video-banner video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pravah-video-banner .video-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.48);
+}
+
+html.dark-theme-mode .pravah-video-banner .video-overlay {
+  background: rgba(2, 6, 23, 0.62);
+}
+
+/* =========================================================
+   CHATBOT - COMPACT SCALE
+   ========================================================= */
+
+.pravah-ai-chatbot {
+  font-size: 13px;
+}
+
+.pravah-ai-chatbot input {
+  font-size: 12px;
+}
+
+.pravah-ai-chatbot button {
+  font-size: 12px;
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 640px) {
+  html.large-text-mode {
+    font-size: 104%;
+  }
+}
+
+/* =========================================================
+   PRAVAH EMERGENCY BANNER
+   INDIAN FLAG ANIMATED GLOW
+   ========================================================= */
+
+.pravah-glow-logo {
+  position: relative;
+  display: inline-block;
+
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+
+  /* Indian flag colours */
+  background: linear-gradient(
+    90deg,
+    #ff9933 0%,
+    #ff9933 20%,
+    #ffffff 38%,
+    #ffffff 50%,
+    #138808 68%,
+    #138808 82%,
+    #ff9933 100%
+  );
+
+  background-size: 250% 100%;
+  background-position: 200% 50%;
+
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  /* Moving tricolour glow */
+  animation: pravahIndianGlow 3.5s linear infinite;
+
+  filter:
+    drop-shadow(0 0 3px rgba(255, 153, 51, 0.85))
+    drop-shadow(0 0 6px rgba(255, 255, 255, 0.35))
+    drop-shadow(0 0 8px rgba(19, 136, 8, 0.7));
+}
+
+/* Moving saffron → white → green light */
+@keyframes pravahIndianGlow {
+  0% {
+    background-position: 200% 50%;
+  }
+
+  100% {
+    background-position: -50% 50%;
+  }
+}
+
+/* =========================================================
+   REDUCE MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .pravah-glow-logo {
+    animation: none;
+    background-position: 50% 50%;
+  }
+}

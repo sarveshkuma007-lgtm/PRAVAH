@@ -22,9 +22,6 @@ import { FloatingAIButton } from "./components/FloatingAIButton";
 import { AIChatbot } from "./components/AIChatbot";
 import { VoiceAssistant } from "./components/VoiceAssistant";
 
-// Constants
-import { USER_ROLES } from "./utils/constants";
-
 // Views
 import { Dashboard } from "./views/Dashboard";
 import { DamMonitoring } from "./views/DamMonitoring";
@@ -58,8 +55,8 @@ function AppLayout() {
     <div
       className={
         isLoginPage
-          ? "min-h-screen bg-slate-950 text-slate-100 font-sans"
-          : "min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950"
+          ? "min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans"
+          : "min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-blue-500 selection:text-white transition-colors duration-200"
       }
     >
       {/* Emergency Banner */}
@@ -68,12 +65,20 @@ function AppLayout() {
       {/* Navbar */}
       {!isLoginPage && (
         <Navbar
-          onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+          onToggleSidebar={() =>
+            setSidebarOpen((prev) => !prev)
+          }
           onOpenAI={() => setAiChatOpen(true)}
         />
       )}
 
-      <div className={isLoginPage ? "w-full" : "flex flex-1 relative"}>
+      <div
+        className={
+          isLoginPage
+            ? "w-full"
+            : "flex flex-1 relative"
+        }
+      >
         {/* Sidebar */}
         {!isLoginPage && (
           <Sidebar
@@ -87,20 +92,33 @@ function AppLayout() {
           className={
             isLoginPage
               ? "w-full min-h-screen"
-              : "flex-1 transition-all duration-200 p-4 sm:p-6 md:p-8 lg:ml-64"
+              : "flex-1 min-w-0 transition-all duration-200 p-4 sm:p-6 md:p-8 lg:ml-64"
           }
         >
-          <div className={isLoginPage ? "w-full" : "max-w-7xl mx-auto"}>
+          <div
+            className={
+              isLoginPage
+                ? "w-full"
+                : "max-w-7xl mx-auto"
+            }
+          >
             <Routes>
-
               {/* ================= PUBLIC ROUTES ================= */}
 
-              <Route path="/login" element={<Login />} />
+              <Route
+                path="/login"
+                element={<Login />}
+              />
 
-              <Route path="/about" element={<About />} />
+              <Route
+                path="/about"
+                element={<About />}
+              />
 
-              <Route path="/public" element={<PublicPortal />} />
-
+              <Route
+                path="/public"
+                element={<PublicPortal />}
+              />
 
               {/* ================= PROTECTED ROUTES ================= */}
 
@@ -230,14 +248,16 @@ function AppLayout() {
                 }
               />
 
-
               {/* ================= ADMIN ROUTES ================= */}
 
               <Route
                 path="/manage-dams"
                 element={
                   <ProtectedRoute
-                    allowedRoles={["admin", "govt_official"]}
+                    allowedRoles={[
+                      "admin",
+                      "govt_official",
+                    ]}
                   >
                     <ManageDams />
                   </ProtectedRoute>
@@ -248,31 +268,38 @@ function AppLayout() {
                 path="/manage-users"
                 element={
                   <ProtectedRoute
-                   allowedRoles={["admin"]}
+                    allowedRoles={["admin"]}
                   >
                     <ManageUsers />
                   </ProtectedRoute>
                 }
               />
 
-
               {/* ================= DEFAULT ================= */}
 
               <Route
                 path="/"
-                element={<Navigate to="/login" replace />}
+                element={
+                  <Navigate
+                    to="/login"
+                    replace
+                  />
+                }
               />
 
               <Route
                 path="*"
-                element={<Navigate to="/login" replace />}
+                element={
+                  <Navigate
+                    to="/login"
+                    replace
+                  />
+                }
               />
-
             </Routes>
           </div>
         </main>
       </div>
-
 
       {/* ================= GLOBAL AI FEATURES ================= */}
 
@@ -280,12 +307,16 @@ function AppLayout() {
         <>
           <FloatingAIButton
             isOpen={aiChatOpen}
-            onClick={() => setAiChatOpen((prev) => !prev)}
+            onClick={() =>
+              setAiChatOpen((prev) => !prev)
+            }
           />
 
           <AIChatbot
             isOpen={aiChatOpen}
-            onClose={() => setAiChatOpen(false)}
+            onClose={() =>
+              setAiChatOpen(false)
+            }
           />
 
           <VoiceAssistant />
@@ -294,7 +325,6 @@ function AppLayout() {
     </div>
   );
 }
-
 
 export default function App() {
   return (

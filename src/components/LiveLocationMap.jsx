@@ -1,139 +1,507 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import { useLocation } from "../hooks/useLocation";
-import { MapPin, Navigation, ShieldCheck, Home } from "lucide-react";
+import {
+  Navigation,
+  Route,
+  Loader2,
+  MapPin,
+} from "lucide-react";
 
-export function LiveLocationMap({ height = "400px" }) {
-  const { location, nearestDam, nearestShelter, loading } = useLocation();
+export function LiveLocationMap({ height = "450px" }) {
+  const {
+    location,
+    nearestShelter,
+    loading,
+  } = useLocation();
+
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const routeLayerRef = useRef(null);
 
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [routeInfo, setRouteInfo] = useState(null);
+  const [routeError, setRouteError] = useState("");
+
+  /*
+   * =========================================================
+   * GET REAL ROAD ROUTE FROM OSRM
+   * No API key required.
+   * =========================================================
+   */
+  const getRoadRoute = async (map) => {
+    if (!location || !nearestShelter) return;
+
+    setRouteLoading(true);
+    setRouteError("");
+
+    try {
+      const start = `${location.lng},${location.lat}`;
+      const end = `${nearestShelter.lng},${nearestShelter.lat}`;
+
+      const url =
+        `https://router.project-osrm.org/route/v1/driving/` +
+        `${start};${end}` +
+        `?overview=full&geometries=geojson&steps=true`;
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error("Routing service unavailable");
+      }
+
+      const data = await response.json();
+
+      if (
+        data.code !== "Ok" ||
+        !data.routes ||
+        !data.routes.length
+      ) {
+        throw new Error("No road route found");
+      }
+
+      const route = data.routes[0];
+
+      /*
+       * Remove previous route
+       */
+      if (routeLayerRef.current) {
+        map.removeLayer(routeLayerRef.current);
+        routeLayerRef.current = null;
+      }
+
+      /*
+       * Draw REAL ROAD ROUTE
+       */
+      routeLayerRef.current = L.geoJSON(
+        {
+          type: "Feature",
+          properties: {},
+          geometry: route.geometry,
+        },
+        {
+          style: {
+            color: "#16a34a",
+            weight: 6,
+            opacity: 0.9,
+            lineCap: "round",
+            lineJoin: "round",
+          },
+        }
+      ).addTo(map);
+
+      /*
+       * Add highlighted inner line
+       */
+      L.geoJSON(
+        {
+          type: "Feature",
+          properties: {},
+          geometry: route.geometry,
+        },
+        {
+          style: {
+            color: "#bbf7d0",
+            weight: 2,
+            opacity: 0.9,
+            dashArray: "6 8",
+          },
+        }
+      ).addTo(map);
+
+      /*
+       * Route information
+       */
+      setRouteInfo({
+        distance:
+          (route.distance / 1000).toFixed(1),
+        duration:
+          Math.round(route.duration / 60),
+      });
+
+      /*
+       * Fit map to REAL ROAD ROUTE
+       */
+      const routeBounds =
+        L.geoJSON({
+          type: "Feature",
+          properties: {},
+          geometry: route.geometry,
+        }).getBounds();
+
+      map.fitBounds(routeBounds, {
+        padding: [60, 60],
+      });
+
+    } catch (error) {
+      console.error("OSRM routing error:", error);
+      setRouteError(
+        "Road route unavailable. Showing direct evacuation corridor."
+      );
+
+      /*
+       * Fallback route
+       */
+      const fallback = [
+        [location.lat, location.lng],
+        [nearestShelter.lat, nearestShelter.lng],
+      ];
+
+      routeLayerRef.current = L.polyline(
+        fallback,
+        {
+          color: "#f59e0b",
+          weight: 5,
+          dashArray: "8 8",
+          opacity: 0.85,
+        }
+      ).addTo(map);
+
+      const bounds = L.latLngBounds(fallback);
+
+      map.fitBounds(bounds, {
+        padding: [60, 60],
+      });
+    } finally {
+      setRouteLoading(false);
+    }
+  };
+
+  /*
+   * =========================================================
+   * CREATE MAP
+   * =========================================================
+   */
   useEffect(() => {
-    if (!mapContainerRef.current || !location) return;
+    if (!mapContainerRef.current || !location) {
+      return;
+    }
 
+    /*
+     * Remove previous map
+     */
     if (mapInstanceRef.current) {
       mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
     }
 
     const map = L.map(mapContainerRef.current, {
       center: [location.lat, location.lng],
-      zoom: 13,
+      zoom: 7,
       zoomControl: true,
-      attributionControl: false,
+      attributionControl: true,
     });
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-      maxZoom: 19,
-      subdomains: "abcd",
-    }).addTo(map);
+    /*
+     * =======================================================
+     * OPENSTREETMAP
+     * No API key required
+     * =======================================================
+     */
+    L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+        maxZoom: 19,
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
+      }
+    ).addTo(map);
 
-    // User marker (blue pulsing beacon)
+    /*
+     * =======================================================
+     * USER LOCATION
+     * =======================================================
+     */
+
     const userIcon = L.divIcon({
-      className: "user-loc-icon",
+      className: "pravah-user-marker",
       html: `
         <div style="
-          width: 22px;
-          height: 22px;
-          background: #38bdf8;
-          border: 3px solid #ffffff;
-          border-radius: 50%;
-          box-shadow: 0 0 16px #38bdf8;
-          animation: pulse 1.5s infinite;
+          width:24px;
+          height:24px;
+          background:#2563eb;
+          border:4px solid #ffffff;
+          border-radius:50%;
+          box-shadow:
+            0 0 0 5px rgba(37,99,235,0.18),
+            0 3px 10px rgba(0,0,0,0.25);
         "></div>
       `,
-      iconSize: [22, 22],
-      iconAnchor: [11, 11],
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
     });
 
-    L.marker([location.lat, location.lng], { icon: userIcon })
+    L.marker(
+      [location.lat, location.lng],
+      {
+        icon: userIcon,
+        zIndexOffset: 1000,
+      }
+    )
       .addTo(map)
-      .bindPopup(`<strong>Your Location</strong><br/>${location.name || "Live GPS"}`)
-      .openPopup();
+      .bindPopup(`
+        <div style="
+          font-family:Arial,sans-serif;
+          min-width:160px;
+        ">
+          <strong>Your Location</strong>
+          <br/>
+          <span style="color:#64748b;font-size:12px;">
+            ${location.name || "Live GPS Location"}
+          </span>
+        </div>
+      `);
 
-    // Shelter marker (emerald)
+    /*
+     * =======================================================
+     * SHELTER MARKER
+     * =======================================================
+     */
+
     if (nearestShelter) {
       const shelterIcon = L.divIcon({
-        className: "shelter-icon",
+        className: "pravah-shelter-marker",
         html: `
           <div style="
-            width: 26px;
-            height: 26px;
-            background: #10b981;
-            border: 2px solid #ffffff;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 12px #10b981;
+            width:32px;
+            height:32px;
+            background:#16a34a;
+            border:3px solid #ffffff;
+            border-radius:9px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            box-shadow:
+              0 3px 12px rgba(0,0,0,0.25);
           ">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="white"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M3 10.5L12 3l9 7.5"/>
+              <path d="M5 9.5V21h14V9.5"/>
+              <path d="M9 21v-6h6v6"/>
             </svg>
           </div>
         `,
-        iconSize: [26, 26],
-        iconAnchor: [13, 13],
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
       });
 
-      L.marker([nearestShelter.lat, nearestShelter.lng], { icon: shelterIcon })
+      L.marker(
+        [
+          nearestShelter.lat,
+          nearestShelter.lng,
+        ],
+        {
+          icon: shelterIcon,
+        }
+      )
         .addTo(map)
         .bindPopup(`
-          <strong>Nearest Shelter: ${nearestShelter.name}</strong><br/>
-          Elevation: +${nearestShelter.elevationMeters}m (High Ground)<br/>
-          Capacity: ${nearestShelter.currentOccupancy}/${nearestShelter.capacity}
+          <div style="
+            font-family:Arial,sans-serif;
+            min-width:200px;
+            line-height:1.5;
+          ">
+            <strong>
+              ${nearestShelter.name}
+            </strong>
+
+            <br/>
+
+            <span style="color:#16a34a;font-size:12px;">
+              ✓ Designated Safe Shelter
+            </span>
+
+            <hr style="
+              border:0;
+              border-top:1px solid #e2e8f0;
+              margin:7px 0;
+            "/>
+
+            <span style="font-size:12px;">
+              Elevation:
+              +${nearestShelter.elevationMeters}m
+            </span>
+
+            <br/>
+
+            <span style="font-size:12px;">
+              Capacity:
+              ${nearestShelter.currentOccupancy}/
+              ${nearestShelter.capacity}
+            </span>
+          </div>
         `);
-
-      // Draw safe evacuation corridor polyline (avoiding low ground river bed)
-      const midLat = (location.lat + nearestShelter.lat) / 2 + 0.005;
-      const midLng = (location.lng + nearestShelter.lng) / 2 - 0.004;
-
-      const safePath = [
-        [location.lat, location.lng],
-        [midLat, midLng],
-        [nearestShelter.lat, nearestShelter.lng],
-      ];
-
-      L.polyline(safePath, {
-        color: "#10b981",
-        weight: 5,
-        opacity: 0.9,
-        dashArray: "6 6",
-      }).addTo(map);
-
-      // Fit bounds
-      const bounds = L.latLngBounds([
-        [location.lat, location.lng],
-        [nearestShelter.lat, nearestShelter.lng],
-      ]);
-      map.fitBounds(bounds, { padding: [40, 40] });
     }
 
     mapInstanceRef.current = map;
 
+    /*
+     * Force Leaflet to recalculate dimensions
+     */
+    setTimeout(() => {
+      map.invalidateSize();
+
+      if (nearestShelter) {
+        getRoadRoute(map);
+      }
+    }, 300);
+
     return () => {
+      if (routeLayerRef.current) {
+        routeLayerRef.current = null;
+      }
+
       map.remove();
       mapInstanceRef.current = null;
     };
   }, [location, nearestShelter]);
 
   return (
-    <div className="relative w-full rounded-xl overflow-hidden border border-slate-800 bg-slate-950 shadow-md">
-      <div ref={mapContainerRef} style={{ width: "100%", height }} />
+    <div className="relative w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
 
-      {/* Floating Status Card */}
-      <div className="absolute top-3 left-3 z-10 bg-slate-900/90 backdrop-blur-md p-3 rounded-lg border border-slate-700 text-xs shadow-lg max-w-[280px]">
-        <div className="flex items-center gap-1.5 text-cyan-400 font-bold mb-1">
-          <Navigation className="w-3.5 h-3.5" />
-          <span>Designated Safe Evacuation Route</span>
+      {/* =====================================================
+          MAP
+      ====================================================== */}
+
+      <div
+        ref={mapContainerRef}
+        style={{
+          width: "100%",
+          height,
+        }}
+      />
+
+      {/* =====================================================
+          LOADING LOCATION
+      ====================================================== */}
+
+      {loading && (
+        <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-white/80 backdrop-blur-sm">
+          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-md">
+            <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+
+            <span className="text-xs font-semibold text-slate-700">
+              Detecting your location...
+            </span>
+          </div>
         </div>
-        <p className="text-slate-300 text-[11px] leading-tight">
-          Recommended high-ground corridor to{" "}
-          <span className="font-semibold text-emerald-400">
-            {nearestShelter?.name || "Nearest Relief Center"}
+      )}
+
+      {/* =====================================================
+          ROUTE INFO
+      ====================================================== */}
+
+      <div className="absolute top-3 left-3 z-[500] max-w-[310px] rounded-xl border border-slate-200 bg-white/95 p-3 shadow-md backdrop-blur-sm">
+
+        <div className="flex items-center gap-2">
+
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-50">
+            {routeLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-green-600" />
+            ) : (
+              <Route className="h-4 w-4 text-green-600" />
+            )}
+          </div>
+
+          <div>
+            <p className="text-xs font-bold text-slate-900">
+              Real Road Evacuation Route
+            </p>
+
+            <p className="text-[10px] font-semibold text-green-600">
+              {routeLoading
+                ? "Calculating road route..."
+                : "Route Active"}
+            </p>
+          </div>
+        </div>
+
+        {routeInfo && (
+          <div className="mt-2 flex gap-3 border-t border-slate-100 pt-2">
+
+            <div>
+              <p className="text-[9px] uppercase text-slate-400">
+                Distance
+              </p>
+
+              <p className="text-xs font-bold text-slate-800">
+                {routeInfo.distance} km
+              </p>
+            </div>
+
+            <div>
+              <p className="text-[9px] uppercase text-slate-400">
+                Est. Time
+              </p>
+
+              <p className="text-xs font-bold text-slate-800">
+                {routeInfo.duration >= 60
+                  ? `${Math.floor(routeInfo.duration / 60)}h ${
+                      routeInfo.duration % 60
+                    }m`
+                  : `${routeInfo.duration} min`}
+              </p>
+            </div>
+
+          </div>
+        )}
+
+        <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
+          Road-based route to{" "}
+          <span className="font-semibold text-slate-800">
+            {nearestShelter?.name || "nearest shelter"}
           </span>
-          {nearestShelter?.distanceKm && ` (${nearestShelter.distanceKm} km away)`}.
+          .
         </p>
+
+        {routeError && (
+          <p className="mt-2 rounded-md bg-amber-50 px-2 py-1.5 text-[9px] font-medium text-amber-700">
+            {routeError}
+          </p>
+        )}
       </div>
+
+      {/* =====================================================
+          LEGEND
+      ====================================================== */}
+
+      <div className="absolute bottom-3 left-3 z-[500] rounded-lg border border-slate-200 bg-white/95 px-3 py-2 shadow-sm backdrop-blur-sm">
+
+        <div className="flex items-center gap-3">
+
+          <div className="flex items-center gap-1.5">
+            <span className="h-3 w-3 rounded-full border-2 border-white bg-blue-600 shadow-sm" />
+            <span className="text-[10px] font-medium text-slate-600">
+              Your Location
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="h-3 w-3 rounded bg-green-600 border-2 border-white shadow-sm" />
+            <span className="text-[10px] font-medium text-slate-600">
+              Shelter
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="h-[3px] w-5 rounded bg-green-600" />
+            <span className="text-[10px] font-medium text-slate-600">
+              Road Route
+            </span>
+          </div>
+
+        </div>
+      </div>
+
     </div>
   );
 }
