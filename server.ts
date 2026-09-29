@@ -7,7 +7,19 @@ import OpenAI from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 // =====================================================
-// ENVIRONMENT CONFIGURATION
+// PRAVAH DATA
+// =====================================================
+
+import { DAMS_DATA } from "./src/data/damData";
+import { MOCK_ALERTS } from "./src/data/mockAlerts";
+import {
+  MOCK_SIMULATION_DATA,
+  MOCK_SHELTERS,
+  MOCK_RESCUE_TEAMS,
+} from "./src/data/mockSimulationData";
+
+// =====================================================
+// ENVIRONMENT
 // =====================================================
 
 dotenv.config({
@@ -25,14 +37,17 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 // AI MODELS
 // =====================================================
 
-// IMPORTANT:
-// PRAVAH uses ONE Gemini model only.
-// No sequential fallback chain = no unnecessary waiting.
-const GEMINI_MODEL = "gemini-3.5-flash-lite";
+const GEMINI_MODEL =
+  process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+const OPENAI_MODEL =
+  process.env.OPENAI_MODEL || "gpt-4o-mini";
 
-app.use(express.json({ limit: "2mb" }));
+app.use(
+  express.json({
+    limit: "4mb",
+  }),
+);
 
 // =====================================================
 // AI CLIENTS
@@ -51,38 +66,367 @@ const openaiClient = OPENAI_API_KEY
   : null;
 
 // =====================================================
+// PRAVAH AI DATA
+// =====================================================
+
+function getPRAVAHData() {
+  return {
+    dams: DAMS_DATA,
+
+    alerts: MOCK_ALERTS,
+
+    floodPrediction: MOCK_SIMULATION_DATA,
+
+    shelters: MOCK_SHELTERS,
+
+    rescueTeams: MOCK_RESCUE_TEAMS,
+  };
+}
+
+// =====================================================
 // PRAVAH SYSTEM INSTRUCTION
 // =====================================================
 
-function getSystemInstruction(context: unknown = {}) {
+function getSystemInstruction(context: any = {}) {
+  const pravahData = getPRAVAHData();
+
   return `
-You are PRAVAH AI, a fast Dam Safety, Flood Prediction,
-and Disaster Management Assistant for India.
+You are PRAVAH AI, the intelligent assistant inside the
+PRAVAH Dam Break Flood Prediction & Disaster Management System.
 
 PRAVAH means:
+
 Predictive Risk Assessment & Vigilance for Aquatic Hazards.
 
-Responsibilities:
+==================================================
+YOUR ROLE
+==================================================
 
-1. Explain dam water levels and reservoir conditions.
-2. Explain rainfall, inflow, outflow, and river conditions.
-3. Explain flood risk and dam-break preparedness.
-4. Provide general evacuation and emergency safety guidance.
-5. Help users understand shelters and safe routes.
-6. Support disaster management officials and citizens.
-7. Support English and Indian languages.
-8. Keep responses clear, professional, concise, and easy to understand.
-9. Prioritize human safety during emergencies.
-10. Never invent real-time emergency information.
-11. Clearly state when live information is unavailable.
-12. Never present simulated data as verified real data.
-13. Do not provide unsupported exact water levels, alerts, or evacuation locations.
+You are the AI assistant for the PRAVAH application.
 
-For immediate danger, advise users to follow official emergency
-instructions and contact local emergency services.
+You can answer questions about the actual information
+available inside this PRAVAH application.
 
-Current system context:
+You can explain:
+
+• Dams
+• Reservoir levels
+• Storage percentage
+• Warning levels
+• Danger levels
+• Inflow
+• Outflow
+• Gates
+• Structural health
+• Risk level
+• River
+• State
+• District
+• Downstream population
+• Dam location
+• Emergency contacts
+• Flood prediction
+• Flood arrival times
+• Simulated flood depth
+• Simulated affected population
+• Active alerts
+• Shelters
+• Shelter occupancy
+• Shelter capacity
+• Shelter facilities
+• Rescue teams
+• Emergency response
+• Safe routes
+• General flood safety
+• PRAVAH features
+
+==================================================
+VERY IMPORTANT
+==================================================
+
+The PRAVAH DATA section contains the application's
+available data.
+
+USE THIS DATA when answering PRAVAH-related questions.
+
+Do NOT invent values.
+
+Do NOT make up dam measurements.
+
+Do NOT make up shelter locations.
+
+Do NOT make up alerts.
+
+Do NOT make up rescue teams.
+
+Do NOT make up flood prediction values.
+
+If the requested information is not available,
+say:
+
+"That information is not currently available in PRAVAH."
+
+==================================================
+DAM QUESTIONS
+==================================================
+
+If the user asks:
+
+"Tell me about Hirakud"
+
+or
+
+"Tell me everything about Hirakud Dam"
+
+find Hirakud Dam in the DAMS DATA.
+
+Give a useful structured answer.
+
+Include, when available:
+
+1. Dam name
+2. River
+3. State
+4. District
+5. Current water level
+6. Full reservoir level
+7. Warning level
+8. Danger level
+9. Storage percentage
+10. Inflow
+11. Outflow
+12. Gates open / total gates
+13. Structural health
+14. Risk level
+15. Downstream population
+16. Nearest town
+17. Emergency contact
+18. Construction year
+19. Dam type
+20. Height
+
+Do the same for:
+
+Tehri Dam
+Hirakud Dam
+Sardar Sarovar Dam
+Bhakra Dam
+Rihand Dam
+Idukki Dam
+Nagarjuna Sagar Dam
+Koyna Dam
+
+==================================================
+DAM COMPARISON
+==================================================
+
+If the user asks:
+
+"Which dams are critical?"
+
+show the dams whose PRAVAH riskLevel is CRITICAL.
+
+If the user asks:
+
+"Show high risk dams"
+
+show dams with HIGH riskLevel.
+
+If the user asks:
+
+"Compare Hirakud and Tehri"
+
+compare their actual available values.
+
+Do not invent missing values.
+
+==================================================
+ALERTS
+==================================================
+
+If the user asks:
+
+"What alerts are active?"
+
+use the actual MOCK_ALERTS data.
+
+Summarize active alerts.
+
+Include:
+
+• Severity
+• Title
+• Location
+• Dam
+• Description
+• Recommended action
+• Status
+
+Do not create additional alerts.
+
+==================================================
+SHELTERS
+==================================================
+
+If the user asks:
+
+"Find shelters"
+
+or
+
+"Tell me about shelters"
+
+use MOCK_SHELTERS.
+
+Give:
+
+• Shelter name
+• Location
+• Capacity
+• Current occupancy
+• Available capacity
+• Status
+• Facilities
+• Contact
+• Elevation
+• Safe-from-breach status
+
+Do not invent shelters.
+
+==================================================
+FLOOD PREDICTION
+==================================================
+
+MOCK_SIMULATION_DATA contains simulation information.
+
+IMPORTANT:
+
+This is SIMULATION DATA.
+
+Never describe simulation results as confirmed live
+measurements.
+
+Use terms such as:
+
+"simulation"
+"predicted"
+"modelled"
+"scenario"
+
+when appropriate.
+
+==================================================
+SAFETY
+==================================================
+
+For emergency questions:
+
+• Give concise safety guidance.
+• Encourage following official emergency instructions.
+• Do not invent official evacuation orders.
+• Do not claim that a person is in immediate danger
+  unless supported by the supplied PRAVAH alert/context.
+• For immediate emergencies, recommend contacting
+  appropriate local emergency services.
+
+==================================================
+CURRENT USER CONTEXT
+==================================================
+
 ${JSON.stringify(context, null, 2)}
+
+==================================================
+ACTUAL PRAVAH APPLICATION DATA
+==================================================
+
+${JSON.stringify(pravahData, null, 2)}
+
+==================================================
+ANSWER STYLE
+==================================================
+
+Be:
+
+• Accurate
+• Professional
+• Helpful
+• Concise
+• Easy to understand
+
+If the user asks "everything", provide a structured,
+detailed answer.
+
+Do not respond with only:
+
+"I can help with dams."
+
+Actually answer the question using the supplied data.
+
+For numerical information preserve the application's units.
+
+Example:
+
+Water Level: 191.15 m
+Storage: 94.6%
+Inflow: 4,200 cumecs
+Outflow: 4,600 cumecs
+Gates: 24 / 64 open
+
+IMPORTANT:
+
+The supplied PRAVAH data represents application data.
+Do not claim that it is independently verified live
+government data unless explicitly stated.
+
+==================================================
+CONTEXT AWARENESS
+==================================================
+
+Use the user's current context when relevant.
+
+If the user asks:
+
+"What is the nearest shelter?"
+
+use the nearest shelter information in context
+and the shelter dataset.
+
+If the user asks:
+
+"What dam is near me?"
+
+use the available location context.
+
+If the user asks:
+
+"Will this dam affect downstream areas?"
+
+use the dam's downstream population and available
+flood simulation information where relevant.
+
+==================================================
+LANGUAGE
+==================================================
+
+Respond in the language requested by the user.
+
+If the user is using Hindi, respond in Hindi.
+
+If the user is using English, respond in English.
+
+If another supported Indian language is requested,
+respond in that language when possible.
+
+==================================================
+FINAL RULE
+==================================================
+
+You are not an offline chatbot.
+
+You are connected to the Gemini API.
+
+Use Gemini reasoning together with the supplied
+PRAVAH application data to answer the user's question.
 `;
 }
 
@@ -98,291 +442,448 @@ function formatOpenAIHistory(
   }
 
   return history
-    .filter((item: any) => item && typeof item === "object")
-    .map((item: any): ChatCompletionMessageParam => {
-      const content = String(item.content || item.text || "");
+    .filter(
+      (item: any) =>
+        item &&
+        typeof item === "object",
+    )
+    .map(
+      (item: any): ChatCompletionMessageParam => {
+        const content = String(
+          item.content ||
+            item.text ||
+            "",
+        );
 
-      if (
-        item.role === "assistant" ||
-        item.role === "model"
-      ) {
+        if (
+          item.role === "assistant" ||
+          item.role === "model"
+        ) {
+          return {
+            role: "assistant",
+            content,
+          };
+        }
+
         return {
-          role: "assistant",
+          role: "user",
           content,
         };
-      }
-
-      return {
-        role: "user",
-        content,
-      };
-    })
-    .filter((item) => {
-      return (
+      },
+    )
+    .filter(
+      (item) =>
         typeof item.content === "string" &&
-        item.content.trim().length > 0
-      );
-    });
+        item.content.trim().length > 0,
+    );
 }
 
 // =====================================================
 // HEALTH CHECK
 // =====================================================
 
-app.get("/api/health", (_req: Request, res: Response) => {
-  res.json({
-    status: "ok",
-    system:
-      "PRAVAH - AI Dam Break Flood Prediction & Disaster Management System",
-    port: PORT,
+app.get(
+  "/api/health",
+  (_req: Request, res: Response) => {
+    res.json({
+      status: "ok",
 
-    openaiConfigured: Boolean(OPENAI_API_KEY),
-    openaiModel: OPENAI_MODEL,
+      system:
+        "PRAVAH - AI Dam Break Flood Prediction & Disaster Management System",
 
-    geminiConfigured: Boolean(GEMINI_API_KEY),
-    geminiModel: GEMINI_MODEL,
+      port: PORT,
 
-    timestamp: new Date().toISOString(),
-  });
-});
+      openaiConfigured:
+        Boolean(OPENAI_API_KEY),
+
+      openaiModel:
+        OPENAI_MODEL,
+
+      geminiConfigured:
+        Boolean(GEMINI_API_KEY),
+
+      geminiModel:
+        GEMINI_MODEL,
+
+      pravahDataLoaded: true,
+
+      damCount:
+        DAMS_DATA.length,
+
+      alertCount:
+        MOCK_ALERTS.length,
+
+      shelterCount:
+        MOCK_SHELTERS.length,
+
+      timestamp:
+        new Date().toISOString(),
+    });
+  },
+);
 
 // =====================================================
 // OPENAI CHAT
 // =====================================================
 
-app.post("/api/openai/chat", async (req: Request, res: Response) => {
-  try {
-    const {
-      message,
-      history = [],
-      context = {},
-    } = req.body ?? {};
+app.post(
+  "/api/openai/chat",
+  async (
+    req: Request,
+    res: Response,
+  ) => {
+    try {
+      const {
+        message,
+        history = [],
+        context = {},
+      } = req.body ?? {};
 
-    if (!message || typeof message !== "string") {
-      return res.status(400).json({
-        error: "Message is required.",
+      if (
+        !message ||
+        typeof message !== "string"
+      ) {
+        return res.status(400).json({
+          error:
+            "Message is required.",
+        });
+      }
+
+      if (!openaiClient) {
+        return res.status(503).json({
+          reply:
+            "PRAVAH OpenAI service is not configured. Please check the server environment.",
+
+          mode: "offline",
+        });
+      }
+
+      const recentHistory =
+        Array.isArray(history)
+          ? history.slice(-4)
+          : [];
+
+      const formattedHistory =
+        formatOpenAIHistory(
+          recentHistory,
+        );
+
+      const messages: ChatCompletionMessageParam[] =
+        [
+          {
+            role: "system",
+            content:
+              getSystemInstruction(
+                context,
+              ),
+          },
+
+          ...formattedHistory,
+
+          {
+            role: "user",
+            content: message.trim(),
+          },
+        ];
+
+      const completion =
+        await openaiClient.chat.completions.create(
+          {
+            model:
+              OPENAI_MODEL,
+
+            messages,
+
+            temperature: 0.3,
+
+            max_tokens: 800,
+          },
+        );
+
+      const reply =
+        completion
+          .choices[0]
+          ?.message
+          ?.content ||
+        "I could not generate a response.";
+
+      return res.json({
+        reply,
+
+        mode: "live",
+
+        provider: "openai",
+
+        model:
+          OPENAI_MODEL,
       });
-    }
+    } catch (error: any) {
+      console.error(
+        "OpenAI API Error:",
+        error,
+      );
 
-    if (!openaiClient) {
-      return res.status(503).json({
+      return res.status(500).json({
+        error:
+          error?.message ||
+          "OpenAI request failed.",
+
         reply:
-          "PRAVAH OpenAI service is not configured. Please check the server environment.",
-        mode: "offline",
+          "PRAVAH AI is temporarily unavailable. Please try again shortly.",
+
+        mode: "error",
       });
     }
-
-    // Only send recent messages.
-    const recentHistory = Array.isArray(history)
-      ? history.slice(-4)
-      : [];
-
-    const formattedHistory =
-      formatOpenAIHistory(recentHistory);
-
-    const messages: ChatCompletionMessageParam[] = [
-      {
-        role: "system",
-        content: getSystemInstruction(context),
-      },
-
-      ...formattedHistory,
-
-      {
-        role: "user",
-        content: message.trim(),
-      },
-    ];
-
-    const completion =
-      await openaiClient.chat.completions.create({
-        model: OPENAI_MODEL,
-        messages,
-        temperature: 0.3,
-        max_tokens: 600,
-      });
-
-    const reply =
-      completion.choices[0]?.message?.content ||
-      "I could not generate a response.";
-
-    console.log(
-      `PRAVAH OpenAI response generated using ${OPENAI_MODEL}.`,
-    );
-
-    return res.json({
-      reply,
-      mode: "live",
-      provider: "openai",
-      model: OPENAI_MODEL,
-    });
-  } catch (error: any) {
-    console.error("OpenAI API Error:", error);
-
-    return res.status(500).json({
-      error:
-        error?.message ||
-        "OpenAI request failed.",
-
-      reply:
-        "PRAVAH AI is temporarily unavailable. Please try again shortly.",
-
-      mode: "error",
-    });
-  }
-});
+  },
+);
 
 // =====================================================
 // GEMINI CHAT
 // =====================================================
 
-app.post("/api/gemini/chat", async (req: Request, res: Response) => {
-  const requestStartedAt = Date.now();
+app.post(
+  "/api/gemini/chat",
+  async (
+    req: Request,
+    res: Response,
+  ) => {
+    const requestStartedAt =
+      Date.now();
 
-  try {
-    const {
-      message,
-      history = [],
-      context = {},
-    } = req.body ?? {};
+    try {
+      const {
+        message,
+        history = [],
+        context = {},
+      } = req.body ?? {};
 
-    if (!message || typeof message !== "string") {
-      return res.status(400).json({
-        error: "Message is required.",
-      });
-    }
+      if (
+        !message ||
+        typeof message !== "string"
+      ) {
+        return res.status(400).json({
+          error:
+            "Message is required.",
+        });
+      }
 
-    if (!geminiClient) {
-      return res.status(503).json({
-        reply:
-          "PRAVAH AI is not configured. Please check the server environment.",
+      if (!geminiClient) {
+        return res.status(503).json({
+          reply:
+            "PRAVAH AI is not configured. Please check GEMINI_API_KEY in the server environment.",
 
-        mode: "offline",
-      });
-    }
+          mode: "error",
+        });
+      }
 
-    // -------------------------------------------------
-    // KEEP ONLY RECENT CHAT HISTORY
-    // -------------------------------------------------
+      // -----------------------------------------------
+      // RECENT HISTORY
+      // -----------------------------------------------
 
-    const recentHistory = Array.isArray(history)
-      ? history.slice(-4)
-      : [];
+      const recentHistory =
+        Array.isArray(history)
+          ? history.slice(-6)
+          : [];
 
-    const contents = [
-      ...recentHistory
-        .filter(
-          (item: any) =>
-            item &&
-            typeof item === "object",
-        )
-        .map((item: any) => ({
-          role:
-            item.role === "assistant" ||
-            item.role === "model"
-              ? "model"
-              : "user",
+      const contents = [
+        ...recentHistory
+          .filter(
+            (item: any) =>
+              item &&
+              typeof item ===
+                "object",
+          )
+          .map(
+            (item: any) => ({
+              role:
+                item.role ===
+                  "assistant" ||
+                item.role ===
+                  "model"
+                  ? "model"
+                  : "user",
+
+              parts: [
+                {
+                  text: String(
+                    item.content ||
+                      item.text ||
+                      "",
+                  ),
+                },
+              ],
+            }),
+          ),
+
+        {
+          role: "user",
 
           parts: [
             {
-              text: String(
-                item.content ||
-                  item.text ||
-                  "",
-              ),
+              text:
+                message.trim(),
             },
           ],
-        })),
-
-      {
-        role: "user",
-
-        parts: [
-          {
-            text: message.trim(),
-          },
-        ],
-      },
-    ];
-
-    // -------------------------------------------------
-    // SINGLE MODEL REQUEST
-    // -------------------------------------------------
-
-    console.log(
-      `PRAVAH AI trying model: ${GEMINI_MODEL}`,
-    );
-
-    const response =
-      await geminiClient.models.generateContent({
-        model: GEMINI_MODEL,
-
-        contents,
-
-        config: {
-          systemInstruction:
-            getSystemInstruction(context),
-
-          // Keep chatbot responses short and fast.
-          maxOutputTokens: 400,
-
-          temperature: 0.2,
         },
+      ];
+
+      // -----------------------------------------------
+      // BUILD REAL PRAVAH CONTEXT
+      // -----------------------------------------------
+
+      const aiContext = {
+        userContext:
+          context,
+
+        application:
+          "PRAVAH",
+
+        dataAvailable: {
+          dams:
+            DAMS_DATA.length,
+
+          alerts:
+            MOCK_ALERTS.length,
+
+          shelters:
+            MOCK_SHELTERS.length,
+
+          rescueTeams:
+            MOCK_RESCUE_TEAMS.length,
+
+          floodSimulation:
+            true,
+        },
+      };
+
+      console.log(
+        "==========================================",
+      );
+
+      console.log(
+        "PRAVAH GEMINI REQUEST",
+      );
+
+      console.log(
+        "Question:",
+        message.trim(),
+      );
+
+      console.log(
+        "Dam data:",
+        DAMS_DATA.length,
+      );
+
+      console.log(
+        "Alert data:",
+        MOCK_ALERTS.length,
+      );
+
+      console.log(
+        "Shelter data:",
+        MOCK_SHELTERS.length,
+      );
+
+      console.log(
+        "==========================================",
+      );
+
+      // -----------------------------------------------
+      // GEMINI
+      // -----------------------------------------------
+
+      const response =
+        await geminiClient.models.generateContent(
+          {
+            model:
+              GEMINI_MODEL,
+
+            contents,
+
+            config: {
+              systemInstruction:
+                getSystemInstruction(
+                  aiContext,
+                ),
+
+              maxOutputTokens: 800,
+
+              temperature: 0.2,
+            },
+          },
+        );
+
+      const reply =
+        response.text ||
+        "No response generated.";
+
+      const elapsed =
+        Date.now() -
+        requestStartedAt;
+
+      console.log(
+        `PRAVAH Gemini response generated using ${GEMINI_MODEL}.`,
+      );
+
+      console.log(
+        `PRAVAH Gemini response time: ${elapsed}ms`,
+      );
+
+      return res.json({
+        reply,
+
+        mode: "live",
+
+        provider:
+          "Gemini",
+
+        model:
+          GEMINI_MODEL,
+
+        responseTimeMs:
+          elapsed,
       });
+    } catch (error: any) {
+      const elapsed =
+        Date.now() -
+        requestStartedAt;
 
-    const reply =
-      response.text ||
-      "No response generated.";
+      console.error(
+        "==========================================",
+      );
 
-    const elapsed =
-      Date.now() - requestStartedAt;
+      console.error(
+        "PRAVAH GEMINI ERROR",
+      );
 
-    console.log(
-      `PRAVAH AI response generated successfully using ${GEMINI_MODEL}.`,
-    );
+      console.error(
+        error,
+      );
 
-    console.log(
-      `PRAVAH AI response time: ${elapsed}ms`,
-    );
+      console.error(
+        `Failed after ${elapsed}ms`,
+      );
 
-    return res.json({
-      reply,
+      console.error(
+        "==========================================",
+      );
 
-      mode: "live",
+      return res.status(500).json({
+        error:
+          error?.message ||
+          "Gemini request failed.",
 
-      provider: "PRAVAH",
+        reply:
+          "PRAVAH AI is temporarily unavailable. Please try again shortly.",
 
-      model: GEMINI_MODEL,
+        mode: "error",
 
-      responseTimeMs: elapsed,
-    });
-  } catch (error: any) {
-    const elapsed =
-      Date.now() - requestStartedAt;
-
-    console.error(
-      "Gemini API Error:",
-      error,
-    );
-
-    console.error(
-      `PRAVAH AI failed after ${elapsed}ms.`,
-    );
-
-    return res.status(500).json({
-      error:
-        error?.message ||
-        "Gemini request failed.",
-
-      reply:
-        "PRAVAH AI is temporarily unavailable. Please try again shortly.",
-
-      mode: "error",
-
-      responseTimeMs: elapsed,
-    });
-  }
-});
+        responseTimeMs:
+          elapsed,
+      });
+    }
+  },
+);
 
 // =====================================================
 // OPENAI RISK ANALYSIS
@@ -390,7 +891,10 @@ app.post("/api/gemini/chat", async (req: Request, res: Response) => {
 
 app.post(
   "/api/openai/risk-analysis",
-  async (req: Request, res: Response) => {
+  async (
+    req: Request,
+    res: Response,
+  ) => {
     try {
       const {
         damData = {},
@@ -402,8 +906,6 @@ app.post(
         return res.status(503).json({
           error:
             "OpenAI API is not configured.",
-
-          mode: "offline",
         });
       }
 
@@ -411,50 +913,71 @@ app.post(
 Analyze the following dam and environmental data.
 
 Dam Data:
-${JSON.stringify(damData, null, 2)}
+${JSON.stringify(
+  damData,
+  null,
+  2,
+)}
 
 Weather Data:
-${JSON.stringify(weatherData, null, 2)}
+${JSON.stringify(
+  weatherData,
+  null,
+  2,
+)}
 
 Terrain Data:
-${JSON.stringify(terrainData, null, 2)}
+${JSON.stringify(
+  terrainData,
+  null,
+  2,
+)}
 
-Provide a structured educational flood-risk assessment containing:
+Provide:
 
 1. Executive summary
-2. Possible risk indicators
-3. Important hydrological factors
+2. Risk indicators
+3. Hydrological factors
 4. Data limitations
 5. General safety recommendations
 
 Do not invent live measurements.
-Clearly distinguish simulated data from verified observations.
-Do not issue unsupported official warnings or evacuation orders.
+Clearly distinguish simulation from verified observations.
 `;
 
       const completion =
-        await openaiClient.chat.completions.create({
-          model: OPENAI_MODEL,
+        await openaiClient.chat.completions.create(
+          {
+            model:
+              OPENAI_MODEL,
 
-          messages: [
-            {
-              role: "system",
-              content: getSystemInstruction({}),
-            },
+            messages: [
+              {
+                role: "system",
+                content:
+                  getSystemInstruction(
+                    {},
+                  ),
+              },
 
-            {
-              role: "user",
-              content: prompt,
-            },
-          ],
+              {
+                role: "user",
+                content:
+                  prompt,
+              },
+            ],
 
-          temperature: 0.3,
+            temperature: 0.3,
 
-          max_tokens: 1000,
-        });
+            max_tokens: 1000,
+          },
+        );
 
       const analysis =
-        completion.choices[0]?.message?.content ||
+        completion
+          .choices[0]
+          ?.message
+          ?.content ||
         "No risk analysis was generated.";
 
       return res.json({
@@ -462,9 +985,11 @@ Do not issue unsupported official warnings or evacuation orders.
 
         mode: "live",
 
-        provider: "openai",
+        provider:
+          "openai",
 
-        model: OPENAI_MODEL,
+        model:
+          OPENAI_MODEL,
       });
     } catch (error: any) {
       console.error(
@@ -487,8 +1012,12 @@ Do not issue unsupported official warnings or evacuation orders.
 
 app.post(
   "/api/gemini/risk-analysis",
-  async (req: Request, res: Response) => {
-    const requestStartedAt = Date.now();
+  async (
+    req: Request,
+    res: Response,
+  ) => {
+    const requestStartedAt =
+      Date.now();
 
     try {
       const {
@@ -501,8 +1030,6 @@ app.post(
         return res.status(503).json({
           error:
             "PRAVAH AI is not configured.",
-
-          mode: "offline",
         });
       }
 
@@ -510,15 +1037,27 @@ app.post(
 Analyze the following dam and environmental data.
 
 Dam Data:
-${JSON.stringify(damData, null, 2)}
+${JSON.stringify(
+  damData,
+  null,
+  2,
+)}
 
 Weather Data:
-${JSON.stringify(weatherData, null, 2)}
+${JSON.stringify(
+  weatherData,
+  null,
+  2,
+)}
 
 Terrain Data:
-${JSON.stringify(terrainData, null, 2)}
+${JSON.stringify(
+  terrainData,
+  null,
+  2,
+)}
 
-Provide a structured educational flood-risk assessment containing:
+Provide:
 
 1. Executive summary
 2. Possible risk indicators
@@ -527,40 +1066,47 @@ Provide a structured educational flood-risk assessment containing:
 5. General safety recommendations
 
 Do not invent live measurements.
-Clearly distinguish simulated data from verified observations.
-Do not issue unsupported official warnings or evacuation orders.
-`;
 
-      // -------------------------------------------------
-      // SINGLE MODEL ONLY
-      // -------------------------------------------------
+Clearly distinguish simulated data from verified observations.
+
+Do not issue unsupported official warnings or
+evacuation orders.
+`;
 
       console.log(
         `PRAVAH AI risk analysis using model: ${GEMINI_MODEL}`,
       );
 
       const response =
-        await geminiClient.models.generateContent({
-          model: GEMINI_MODEL,
+        await geminiClient.models.generateContent(
+          {
+            model:
+              GEMINI_MODEL,
 
-          contents: prompt,
+            contents:
+              prompt,
 
-          config: {
-            systemInstruction:
-              getSystemInstruction({}),
+            config: {
+              systemInstruction:
+                getSystemInstruction(
+                  {},
+                ),
 
-            maxOutputTokens: 900,
+              maxOutputTokens:
+                1000,
 
-            temperature: 0.2,
+              temperature: 0.2,
+            },
           },
-        });
+        );
 
       const analysis =
         response.text ||
         "No risk analysis was generated.";
 
       const elapsed =
-        Date.now() - requestStartedAt;
+        Date.now() -
+        requestStartedAt;
 
       console.log(
         `PRAVAH AI risk analysis generated successfully using ${GEMINI_MODEL}.`,
@@ -575,23 +1121,23 @@ Do not issue unsupported official warnings or evacuation orders.
 
         mode: "live",
 
-        provider: "PRAVAH",
+        provider:
+          "Gemini",
 
-        model: GEMINI_MODEL,
+        model:
+          GEMINI_MODEL,
 
-        responseTimeMs: elapsed,
+        responseTimeMs:
+          elapsed,
       });
     } catch (error: any) {
       const elapsed =
-        Date.now() - requestStartedAt;
+        Date.now() -
+        requestStartedAt;
 
       console.error(
         "Gemini Risk Analysis Error:",
         error,
-      );
-
-      console.error(
-        `PRAVAH AI risk analysis failed after ${elapsed}ms.`,
       );
 
       return res.status(500).json({
@@ -599,29 +1145,36 @@ Do not issue unsupported official warnings or evacuation orders.
           error?.message ||
           "Risk analysis failed.",
 
-        responseTimeMs: elapsed,
+        responseTimeMs:
+          elapsed,
       });
     }
   },
 );
 
 // =====================================================
-// VITE DEVELOPMENT / PRODUCTION SERVER
+// VITE DEVELOPMENT / PRODUCTION
 // =====================================================
 
 async function startServer() {
   try {
-    if (process.env.NODE_ENV !== "production") {
+    if (
+      process.env.NODE_ENV !==
+      "production"
+    ) {
       const vite =
         await createViteServer({
           server: {
-            middlewareMode: true,
+            middlewareMode:
+              true,
           },
 
           appType: "spa",
         });
 
-      app.use(vite.middlewares);
+      app.use(
+        vite.middlewares,
+      );
 
       console.log(
         "Vite development server enabled.",
@@ -634,7 +1187,9 @@ async function startServer() {
         );
 
       app.use(
-        express.static(distPath),
+        express.static(
+          distPath,
+        ),
       );
 
       app.use(
@@ -698,7 +1253,19 @@ async function startServer() {
         );
 
         console.log(
-          "AI service: PRAVAH AI - SINGLE MODEL FAST MODE",
+          `Dams loaded: ${DAMS_DATA.length}`,
+        );
+
+        console.log(
+          `Alerts loaded: ${MOCK_ALERTS.length}`,
+        );
+
+        console.log(
+          `Shelters loaded: ${MOCK_SHELTERS.length}`,
+        );
+
+        console.log(
+          "AI service: PRAVAH AI + Gemini",
         );
 
         console.log(
