@@ -358,13 +358,74 @@ export function FloodMap({
       preferCanvas: true,
     });
 
-    const tileLayer = L.tileLayer(initialTileConfig.url, {
-      maxZoom: 18,
-      maxNativeZoom: 18,
-      subdomains: "abcd",
+    const initialTileOptions = {
+      maxZoom: initialTileConfig.maxZoom ?? 18,
+      maxNativeZoom:
+        initialTileConfig.maxNativeZoom ??
+        initialTileConfig.maxZoom ??
+        18,
       updateWhenIdle: true,
       keepBuffer: 2,
-    }).addTo(map);
+    };
+
+    if (initialTileConfig.subdomains) {
+      initialTileOptions.subdomains = initialTileConfig.subdomains;
+    }
+
+    const tileLayer = L.tileLayer(
+      initialTileConfig.url,
+      initialTileOptions,
+    ).addTo(map);
+
+    let tileErrors = 0;
+    let fallbackActivated = false;
+
+    const activateOSMFallback = () => {
+      if (fallbackActivated || !mapInstanceRef.current) {
+        return;
+      }
+
+      fallbackActivated = true;
+
+      const fallbackOptions = {
+        maxZoom: 19,
+        maxNativeZoom: 19,
+        updateWhenIdle: true,
+        keepBuffer: 2,
+        attribution: "&copy; OpenStreetMap contributors",
+      };
+
+      fallbackOptions.subdomains = ["a", "b", "c"];
+
+      const fallbackLayer = L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        fallbackOptions,
+      ).addTo(map);
+
+      fallbackLayer.bringToBack();
+
+      if (tileLayerRef.current) {
+        map.removeLayer(tileLayerRef.current);
+      }
+
+      tileLayerRef.current = fallbackLayer;
+
+      console.warn(
+        "PRAVAH: basemap tile errors detected; switched to OpenStreetMap fallback.",
+      );
+
+      window.setTimeout(() => {
+        map.invalidateSize({ animate: false });
+      }, 100);
+    };
+
+    tileLayer.on("tileerror", () => {
+      tileErrors += 1;
+
+      if (tileErrors >= 8) {
+        activateOSMFallback();
+      }
+    });
 
     const layerGroup = L.layerGroup().addTo(map);
 
@@ -374,9 +435,30 @@ export function FloodMap({
 
     setMapReady(true);
 
-    requestAnimationFrame(() => {
-      map.invalidateSize();
+    const invalidateMapSize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize({
+          animate: false,
+        });
+      }
+    };
+
+    requestAnimationFrame(invalidateMapSize);
+
+    const resizeTimers = [
+      window.setTimeout(invalidateMapSize, 100),
+      window.setTimeout(invalidateMapSize, 300),
+      window.setTimeout(invalidateMapSize, 700),
+      window.setTimeout(invalidateMapSize, 1200),
+    ];
+
+    const resizeObserver = new ResizeObserver(() => {
+      invalidateMapSize();
     });
+
+    if (mapContainerRef.current) {
+      resizeObserver.observe(mapContainerRef.current);
+    }
 
     return () => {
       setMapReady(false);
@@ -384,6 +466,11 @@ export function FloodMap({
       tileLayerRef.current = null;
       layerGroupRef.current = null;
       mapInstanceRef.current = null;
+
+      resizeObserver.disconnect();
+      resizeTimers.forEach((timer) =>
+        window.clearTimeout(timer),
+      );
 
       map.remove();
     };
@@ -416,22 +503,78 @@ export function FloodMap({
       map.removeLayer(previousTileLayer);
     }
 
-    const newTileLayer = L.tileLayer(tileConfig.url, {
-      maxZoom: 18,
-      maxNativeZoom: 18,
-      subdomains: "abcd",
+    const tileOptions = {
+      maxZoom: tileConfig.maxZoom ?? 18,
+      maxNativeZoom:
+        tileConfig.maxNativeZoom ??
+        tileConfig.maxZoom ??
+        18,
       updateWhenIdle: true,
       keepBuffer: 2,
-    }).addTo(map);
+    };
+
+    if (tileConfig.subdomains) {
+      tileOptions.subdomains = tileConfig.subdomains;
+    }
+
+    const newTileLayer = L.tileLayer(
+      tileConfig.url,
+      tileOptions,
+    ).addTo(map);
+
+    let switchedTileErrors = 0;
+    let switchedFallbackActivated = false;
+
+    newTileLayer.on("tileerror", () => {
+      switchedTileErrors += 1;
+
+      if (
+        switchedTileErrors >= 8 &&
+        !switchedFallbackActivated &&
+        mapInstanceRef.current
+      ) {
+        switchedFallbackActivated = true;
+
+        const fallbackLayer = L.tileLayer(
+          "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          {
+            maxZoom: 19,
+            maxNativeZoom: 19,
+            updateWhenIdle: true,
+            keepBuffer: 2,
+            subdomains: ["a", "b", "c"],
+            attribution:
+              "&copy; OpenStreetMap contributors",
+          },
+        ).addTo(map);
+
+        fallbackLayer.bringToBack();
+
+        map.removeLayer(newTileLayer);
+        tileLayerRef.current = fallbackLayer;
+
+        console.warn(
+          `PRAVAH: ${activeTile} tile errors detected; switched to OpenStreetMap fallback.`,
+        );
+      }
+    });
 
     // Always place the basemap behind all overlay layers.
     newTileLayer.bringToBack();
 
     tileLayerRef.current = newTileLayer;
 
-    requestAnimationFrame(() => {
-      map.invalidateSize();
-    });
+    const invalidateMapSize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize({
+          animate: false,
+        });
+      }
+    };
+
+    requestAnimationFrame(invalidateMapSize);
+    window.setTimeout(invalidateMapSize, 150);
+    window.setTimeout(invalidateMapSize, 500);
   }, [activeTile, mapReady]);
 
   // =====================================================
@@ -726,13 +869,18 @@ export function FloodMap({
   // =====================================================
 
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl">
+    <div
+      className="relative w-full min-w-0 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl"
+      style={{ isolation: "isolate" }}
+    >
       {/* Map Surface */}
       <div
         ref={mapContainerRef}
         style={{
           width: "100%",
           height,
+          minHeight: height,
+          position: "relative",
         }}
         className="z-10"
       />

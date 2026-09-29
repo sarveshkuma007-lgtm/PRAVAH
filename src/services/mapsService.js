@@ -1,21 +1,23 @@
-
 const MAP_CONFIG = {
-  // OpenStreetMap — no personal API key required
-  OSM_TILES: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  // OpenStreetMap
+  OSM_TILES:
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
 
-  // Esri World Imagery — satellite tiles
+  // Esri World Imagery
   SATELLITE_TILES:
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
 
-  // OpenTopoMap — terrain tiles
+  // OpenTopoMap
   TERRAIN_TILES:
     "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
 
   INDIA_CENTER: [22.5937, 78.9629],
 
-  ROUTING_API: "https://router.project-osrm.org/route/v1/driving",
+  ROUTING_API:
+    "https://router.project-osrm.org/route/v1/driving",
 
-  GEOCODING_API: "https://nominatim.openstreetmap.org",
+  GEOCODING_API:
+    "https://nominatim.openstreetmap.org",
 };
 
 // =====================================================
@@ -27,12 +29,18 @@ const TILE_LAYERS = {
     url: MAP_CONFIG.OSM_TILES,
     attribution: "&copy; OpenStreetMap contributors",
     maxZoom: 19,
+    maxNativeZoom: 19,
+    subdomains: ["a", "b", "c"],
   },
 
   satellite: {
     url: MAP_CONFIG.SATELLITE_TILES,
     attribution: "Tiles &copy; Esri",
     maxZoom: 18,
+    maxNativeZoom: 18,
+    // IMPORTANT:
+    // Esri URL does NOT use {s}
+    subdomains: undefined,
   },
 
   terrain: {
@@ -40,6 +48,8 @@ const TILE_LAYERS = {
     attribution:
       "Map data &copy; OpenStreetMap contributors, SRTM | Map style &copy; OpenTopoMap",
     maxZoom: 17,
+    maxNativeZoom: 17,
+    subdomains: ["a", "b", "c"],
   },
 };
 
@@ -162,7 +172,6 @@ const mapsService = {
       return data.routes?.[0] || null;
     } catch (error) {
       console.warn("Routing unavailable:", error);
-
       return null;
     }
   },
@@ -175,13 +184,13 @@ const mapsService = {
     try {
       const response = await fetch(
         `${MAP_CONFIG.GEOCODING_API}/search?format=json&q=${encodeURIComponent(
-          query
+          query,
         )}&countrycodes=in`,
         {
           headers: {
             Accept: "application/json",
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -191,7 +200,6 @@ const mapsService = {
       return await response.json();
     } catch (error) {
       console.warn("Geocoding unavailable:", error);
-
       return [];
     }
   },
