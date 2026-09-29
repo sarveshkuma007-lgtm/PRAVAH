@@ -10,6 +10,7 @@ import {
   ShieldAlert,
   MapPin,
 } from "lucide-react";
+
 import { useEmergency } from "../context/EmergencyContext";
 import { useAuth } from "../context/AuthContext";
 import { AlertCard } from "../components/AlertCard";
@@ -127,14 +128,63 @@ export function Alerts() {
   ];
 
   return (
-    <div className="space-y-5 text-slate-900">
+    <div className="alerts-page space-y-5 text-slate-900">
 
-      {/* Header */}
+      {/* =========================================================
+          ALERT CARD READABILITY FIX
+          Keeps severity colors but forces secondary text to be readable
+          on the light alert-card backgrounds.
+      ========================================================== */}
+      <style>{`
+        .alerts-page .text-slate-300 {
+          color: #334155 !important;
+        }
+
+        .alerts-page .text-slate-400 {
+          color: #475569 !important;
+        }
+
+        .alerts-page .text-slate-500 {
+          color: #64748b !important;
+        }
+
+        .alerts-page .text-cyan-300 {
+          color: #0891b2 !important;
+        }
+
+        .alerts-page .text-cyan-400 {
+          color: #0891b2 !important;
+        }
+
+        .alerts-page .text-blue-300 {
+          color: #2563eb !important;
+        }
+
+        /* Keep alert titles dark and readable */
+        .alerts-page .font-bold.text-white,
+        .alerts-page .font-semibold.text-white {
+          color: #0f172a !important;
+        }
+
+        /* Don't override emergency/severity buttons and badges */
+        .alerts-page button.bg-red-600,
+        .alerts-page button.bg-red-700,
+        .alerts-page .bg-red-600.text-white,
+        .alerts-page .bg-orange-500.text-white,
+        .alerts-page .bg-amber-500.text-white {
+          color: #ffffff !important;
+        }
+      `}</style>
+
+      {/* =========================================================
+          HEADER
+      ========================================================== */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
 
           <div>
             <div className="flex items-center gap-2">
+
               <div className="p-2 bg-red-50 rounded-lg">
                 <Bell className="w-5 h-5 text-red-600" />
               </div>
@@ -149,6 +199,7 @@ export function Alerts() {
                   emergency public communications.
                 </p>
               </div>
+
             </div>
           </div>
 
@@ -161,18 +212,23 @@ export function Alerts() {
               Broadcast Emergency Bulletin
             </button>
           )}
+
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* =========================================================
+          SUMMARY CARDS
+      ========================================================== */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
+        {/* Critical */}
         <div className="bg-white border border-red-200 rounded-xl p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-500">
                 Critical Alerts
               </p>
+
               <p className="text-2xl font-bold text-red-600 mt-1">
                 {criticalCount}
               </p>
@@ -184,12 +240,14 @@ export function Alerts() {
           </div>
         </div>
 
+        {/* High */}
         <div className="bg-white border border-orange-200 rounded-xl p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-500">
                 High Priority
               </p>
+
               <p className="text-2xl font-bold text-orange-600 mt-1">
                 {highCount}
               </p>
@@ -201,12 +259,14 @@ export function Alerts() {
           </div>
         </div>
 
+        {/* Moderate */}
         <div className="bg-white border border-amber-200 rounded-xl p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-500">
                 Moderate
               </p>
+
               <p className="text-2xl font-bold text-amber-600 mt-1">
                 {moderateCount}
               </p>
@@ -218,12 +278,14 @@ export function Alerts() {
           </div>
         </div>
 
+        {/* Acknowledged */}
         <div className="bg-white border border-green-200 rounded-xl p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-500">
                 Acknowledged
               </p>
+
               <p className="text-2xl font-bold text-green-600 mt-1">
                 {acknowledgedCount}
               </p>
@@ -237,7 +299,9 @@ export function Alerts() {
 
       </div>
 
-      {/* Filters */}
+      {/* =========================================================
+          FILTERS
+      ========================================================== */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
         <div className="flex items-center gap-2 overflow-x-auto">
 
@@ -256,7 +320,9 @@ export function Alerts() {
                 }`}
               >
                 <Icon className="w-4 h-4" />
+
                 <span>{tab.label}</span>
+
                 <span
                   className={`px-1.5 py-0.5 rounded-md text-xs ${
                     active
@@ -273,7 +339,9 @@ export function Alerts() {
         </div>
       </div>
 
-      {/* Alert Feed */}
+      {/* =========================================================
+          ALERT FEED
+      ========================================================== */}
       <div className="space-y-3">
 
         {filteredAlerts.map((alert) => (
@@ -286,6 +354,7 @@ export function Alerts() {
 
         {filteredAlerts.length === 0 && (
           <div className="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-sm">
+
             <div className="mx-auto w-12 h-12 rounded-full bg-green-50 flex items-center justify-center">
               <CheckCircle2 className="w-6 h-6 text-green-600" />
             </div>
@@ -297,12 +366,15 @@ export function Alerts() {
             <p className="text-sm text-slate-500 mt-1">
               There are no alerts matching the selected filter.
             </p>
+
           </div>
         )}
 
       </div>
 
-      {/* Broadcast Modal */}
+      {/* =========================================================
+          BROADCAST MODAL
+      ========================================================== */}
       {showBroadcastModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40">
 
@@ -312,6 +384,7 @@ export function Alerts() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
 
               <div className="flex items-center gap-3">
+
                 <div className="p-2 bg-red-50 rounded-lg">
                   <Siren className="w-5 h-5 text-red-600" />
                 </div>
@@ -325,6 +398,7 @@ export function Alerts() {
                     Multi-agency public warning broadcast
                   </p>
                 </div>
+
               </div>
 
               <button
@@ -371,15 +445,9 @@ export function Alerts() {
                     onChange={(e) => setNewSeverity(e.target.value)}
                     className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
                   >
-                    <option value="CRITICAL">
-                      Critical
-                    </option>
-                    <option value="HIGH">
-                      High
-                    </option>
-                    <option value="MODERATE">
-                      Moderate
-                    </option>
+                    <option value="CRITICAL">Critical</option>
+                    <option value="HIGH">High</option>
+                    <option value="MODERATE">Moderate</option>
                   </select>
                 </div>
 
