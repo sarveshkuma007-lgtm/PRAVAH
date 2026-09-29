@@ -23,7 +23,6 @@ html.light-theme-mode {
 body {
   margin: 0;
   min-width: 320px;
-
   font-family:
     Inter,
     ui-sans-serif,
@@ -179,14 +178,6 @@ html.high-contrast-mode {
    ACCESSIBILITY - LARGE TEXT
    ========================================================= */
 
-/*
-  Previous value was 112%, which made the entire UI
-  noticeably oversized.
-
-  106% provides a useful accessibility increase
-  without making the dashboard look distorted.
-*/
-
 html.large-text-mode {
   font-size: 106%;
 }
@@ -201,12 +192,6 @@ html.large-text-mode textarea {
 /* =========================================================
    CHATBOT TYPOGRAPHY PROTECTION
    ========================================================= */
-
-/*
-  Keep the AI chatbot compact even when Large Text Mode
-  is enabled. This prevents the chatbot from becoming
-  excessively large.
-*/
 
 html.large-text-mode .pravah-ai-chatbot {
   font-size: 100%;
@@ -288,17 +273,14 @@ select {
 .pravah-video-banner video {
   position: absolute;
   inset: 0;
-
   width: 100%;
   height: 100%;
-
   object-fit: cover;
 }
 
 .pravah-video-banner .video-overlay {
   position: absolute;
   inset: 0;
-
   background: rgba(2, 6, 23, 0.48);
 }
 
@@ -333,6 +315,59 @@ html.dark-theme-mode .pravah-video-banner .video-overlay {
 }
 
 /* =========================================================
+   PRAVAH EMERGENCY BANNER
+   INDIAN FLAG ANIMATED GLOW
+   ========================================================= */
+
+.pravah-glow-logo {
+  position: relative;
+  display: inline-block;
+
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+
+  /* Indian flag colours */
+  background: linear-gradient(
+    90deg,
+    #ff9933 0%,
+    #ff9933 20%,
+    #ffffff 38%,
+    #ffffff 50%,
+    #138808 68%,
+    #138808 82%,
+    #ff9933 100%
+  );
+
+  background-size: 250% 100%;
+  background-position: 200% 50%;
+
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  /* Moving tricolour glow */
+  animation: pravahIndianGlow 3.5s linear infinite;
+
+  filter:
+    drop-shadow(0 0 3px rgba(255, 153, 51, 0.85))
+    drop-shadow(0 0 6px rgba(255, 255, 255, 0.35))
+    drop-shadow(0 0 8px rgba(19, 136, 8, 0.7));
+}
+
+/* Moving saffron → white → green light */
+@keyframes pravahIndianGlow {
+  0% {
+    background-position: 200% 50%;
+  }
+
+  100% {
+    background-position: -50% 50%;
+  }
+}
+
+/* =========================================================
    REDUCE MOTION
    ========================================================= */
 
@@ -344,5 +379,10 @@ html.dark-theme-mode .pravah-video-banner .video-overlay {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .pravah-glow-logo {
+    animation: none;
+    background-position: 50% 50%;
   }
 }
