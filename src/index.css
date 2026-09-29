@@ -1,1 +1,82 @@
+@import "tailwindcss"
+;/* PRAVAH theme: light by default, dark as an optional "control room" mode.
+   Import once in app/globals.css (or pages/_app). Font: Noto Sans covers
+   Devanagari and Odia, so Hindi/Odia labels render properly.
+   Add to <head>: https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap */
+
+:root {
+  /* surfaces */
+  --bg: #f3f5f7;
+  --surface: #ffffff;
+  --surface-muted: #f8fafb;
+  --border: #d5dde4;
+
+  /* text */
+  --ink: #1b2733;
+  --ink-muted: #5b6b7a;
+
+  /* brand: river blue, used for links, active nav, primary buttons only */
+  --brand: #0b4f7a;
+  --brand-soft: #e3eef6;
+
+  /* status: the only other colours on screen, and they always mean something */
+  --critical: #b42318;
+  --critical-soft: #fdecea;
+  --warning: #a15c07;
+  --warning-soft: #fdf3dc;
+  --safe: #067647;
+  --safe-soft: #e4f4ec;
+
+  --radius: 6px;
+  --font-sans: "Noto Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0f1a24;
+  --surface: #16232f;
+  --surface-muted: #1b2a37;
+  --border: #2b3d4c;
+  --ink: #e6edf3;
+  --ink-muted: #93a4b3;
+  --brand: #6bb2e0;
+  --brand-soft: #1c3547;
+  --critical: #ff7b72;
+  --critical-soft: #3a1f1f;
+  --warning: #f0b45a;
+  --warning-soft: #362a12;
+  --safe: #56c596;
+  --safe-soft: #12301f;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* Numbers line up in columns; use on water levels, cusecs, timestamps */
+.num { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.btn-primary {
+  background: var(--brand);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 0.5rem 0.9rem;
+  font-weight: 600;
+}
+
+.badge { padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
+.badge-critical { background: var(--critical-soft); color: var(--critical); }
+.badge-warning  { background: var(--warning-soft);  color: var(--warning); }
+.badge-safe     { background: var(--safe-soft);     color: var(--safe); }
+
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 @import "tailwindcss";
